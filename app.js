@@ -5,23 +5,23 @@ const app = express();
 // 웹 서버가 사용할 포트 번호를 정의합니다.
 const port = 3000;
 
-// response.send() 사용
-app.get('/send', (request, response) => {
-    return response.send('Hello, this is response.send()!');
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
+
+/**
+ * 루트 경로('/')에 대한 GET 요청을 처리
+ * 요청이 오면 'Hello World!' 문자열을 응답
+ */
+app.get('/', (request, response) => {
+    // 응답.보내다('Hello World!');
+    response.send('Hello World!');
 });
 
-// response.json() 사용
-app.get('/json', (request, response) => {
-    return response.status(200).json({
-        status: 200,
-        message: 'Hello, this is response.json()!',
-        data: null
-    });
-});
+app.post('/users', (request, response) => {
+    const name = request.body.name;
+    const email = request.body.email;
 
-// response.end() 사용
-app.get('/end', (request, response) => {
-    return response.end();
+    return response.send(`${name}, ${email}`);
 });
 
 app.listen(port, () => {
