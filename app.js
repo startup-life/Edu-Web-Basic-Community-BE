@@ -1,29 +1,41 @@
-// express 모듈을 불러옵니다.
 const express = require('express');
-// express 애플리케이션을 생성합니다.
 const app = express();
-// 웹 서버가 사용할 포트 번호를 정의합니다.
 const port = 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+app.use(express.json()); // JSON 요청 본문 처리를 위해 express의 json 미들웨어 사용
 
-/**
- * 루트 경로('/')에 대한 GET 요청을 처리
- * 요청이 오면 'Hello World!' 문자열을 응답
- */
 app.get('/', (request, response) => {
-    // 응답.보내다('Hello World!');
-    response.send('Hello World!');
+    return response.status(200).send('GET 요청에 성공했습니다.');
 });
 
-app.post('/users', (request, response) => {
-    const name = request.body.name;
-    const email = request.body.email;
+app.post('/', (request, response) => {
+    return response.status(201).json({
+        status: 201,
+        message: 'POST 요청에 성공했습니다.',
+        data: request.body
+    });
+});
 
-    return response.send(`${name}, ${email}`);
+app.put('/', (request, response) => {
+    return response.status(200).json({
+        status: 200,
+        message: 'PUT 요청에 성공했습니다.',
+        data: request.body
+    });
+});
+
+app.patch('/', (request, response) => {
+    return response.status(200).json({
+        status: 200,
+        message: 'PATCH 요청에 성공했습니다.',
+        data: request.body
+    });
+});
+
+app.delete('/', (request, response) => {
+    return response.status(204).end();
 });
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`서버가 ${port}번 포트에서 실행 중입니다.`);
 });
