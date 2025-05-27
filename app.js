@@ -1,12 +1,15 @@
 require('dotenv').config({ path: './.env.dev' });
 
 const express = require('express');
+const session = require('express-session');
 const cors = require('cors');
 const route = require('./route/index.js');
+const dbConnect = require('./database/index.js');
 const { errorHandler } = require('./util/errorHandler.js');
 const timeout = require('connect-timeout');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const fs = require('fs');
 const { STATUS_MESSAGE } = require('./util/constant/httpStatusCode');
 
 const app = express();
@@ -14,6 +17,25 @@ const PORT = process.env.BACKEND_PORT || 3000;
 
 // CORS 설정
 app.use(cors('*'));
+
+// 세션 초기화 함수
+const initSessionId = async () => {
+    try {
+        const sql = 'UPDATE user_table SET session_id = NULL;';
+        await dbConnect.query(sql);
+        startHttpServer();
+    } catch (error) {
+        console.error('Failed to initialize session IDs:', error);
+        process.exit(1); // 실패 시 프로세스 종료
+    }
+};
+
+// 서버 시작 함수
+const startHttpServer = () => {
+    app.listen(PORT, () => {
+        console.log(`edu-community app listening on port ${PORT}`);
+    });
+};
 
 // 요청 속도 제한 설정
 const limiter = rateLimit({
@@ -36,6 +58,20 @@ app.use('/public', express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// 세션 설정
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: false,
+            maxAge: 1000 * 60 * 60 * 24 // 1 day
+        }
+    })
+);
+
 // Timeout 설정
 app.use(timeout('5s'));
 
@@ -51,6 +87,5 @@ app.use('/', route);
 // Error Handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-    console.log(`edu-community app listening on port ${PORT}`);
-});
+// 초기화 후 서버 시작
+initSessionId();

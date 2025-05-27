@@ -14,7 +14,7 @@ const {
 
 // 게시글 작성
 exports.writePost = async (request, response, next) => {
-    const { userid: userId } = request.query;
+    const { userid: userId } = request.headers;
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
@@ -37,7 +37,7 @@ exports.writePost = async (request, response, next) => {
         }
 
         if (postContent.length > 1500) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_CONTENT_LENGTH);
+            const error = new Error(STATUS_MESSAGE.INVALID_POST_CONTENT_LENGHT);
             error.status = STATUS_CODE.BAD_REQUEST;
             throw error;
         }
@@ -46,7 +46,7 @@ exports.writePost = async (request, response, next) => {
             userId,
             postTitle,
             postContent,
-            attachFilePath: attachFilePath || null
+            attachFilePath: attachFilePath || null,
         };
         const responseData = await postModel.writePost(requestData);
 
@@ -64,10 +64,10 @@ exports.writePost = async (request, response, next) => {
 
         return response.status(STATUS_CODE.CREATED).json({
             message: STATUS_MESSAGE.WRITE_POST_SUCCESS,
-            data: responseData
+            data: responseData,
         });
     } catch (error) {
-        return next(error);
+        next(error);
     }
 };
 
@@ -125,7 +125,7 @@ exports.getPost = async (request, response, next) => {
 // 게시글 수정
 exports.updatePost = async (request, response, next) => {
     const { post_id: postId } = request.params;
-    const { userid: userId } = request.query;
+    const { userid: userId } = request.headers;
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
@@ -146,7 +146,7 @@ exports.updatePost = async (request, response, next) => {
             userId,
             postTitle,
             postContent,
-            attachFilePath: attachFilePath || null
+            attachFilePath: attachFilePath || null,
         };
         const responseData = await postModel.updatePost(requestData);
 
@@ -158,10 +158,10 @@ exports.updatePost = async (request, response, next) => {
 
         return response.status(STATUS_CODE.OK).json({
             message: STATUS_MESSAGE.UPDATE_POST_SUCCESS,
-            data: responseData
+            data: responseData,
         });
     } catch (error) {
-        return next(error);
+        next(error);
     }
 };
 

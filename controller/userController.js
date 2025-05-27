@@ -44,6 +44,7 @@ exports.loginUser = async (request, response, next) => {
         const requestData = {
             email,
             password,
+            sessionId: request.sessionID,
         };
         const responseData = await userModel.loginUser(requestData, response);
 
@@ -193,7 +194,7 @@ exports.updateUser = async (request, response, next) => {
 
 // 로그인 상태 체크
 exports.checkAuth = async (request, response, next) => {
-    const { userid: userId } = request.query;
+    const { userid: userId } = request.headers;
 
     try {
         if (!userId) {
@@ -226,7 +227,8 @@ exports.checkAuth = async (request, response, next) => {
                 userId,
                 email: userData.email,
                 nickname: userData.nickname,
-                profileImagePath: userData.profile_image || null,
+                profileImagePath: userData.profile_image,
+                auth_token: userData.session_id,
                 auth_status: true,
             },
         });
@@ -312,9 +314,21 @@ exports.logoutUser = async (request, response, next) => {
     const { userid: userId } = request.headers;
 
     try {
-        return response.status(STATUS_CODE.END).json({
-            message: STATUS_MESSAGE.LOGOUT_SUCCESS,
-            data: null,
+        request.session.destroy(async error => {
+            if (error) {
+                return next(error);
+            }
+
+            try {
+                const requestData = {
+                    userId,
+                };
+                await userModel.destroyUserSession(requestData, response);
+
+                return response.status(STATUS_CODE.END).end();
+            } catch (error) {
+                return next(error);
+            }
         });
     } catch (error) {
         return next(error);
