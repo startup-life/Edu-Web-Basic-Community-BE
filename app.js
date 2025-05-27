@@ -1,41 +1,37 @@
+// express 모듈을 불러옵니다.
 const express = require('express');
+
+// connect-timeout 모듈을 불러옵니다.
+const timeout = require('connect-timeout');
+
+// express 애플리케이션을 생성합니다.
 const app = express();
+
+// 웹 서버가 사용할 포트 번호를 정의합니다.
 const port = 3000;
 
-app.use(express.json()); // JSON 요청 본문 처리를 위해 express의 json 미들웨어 사용
+// 요청 타임아웃 설정 (예: 5초)
+app.use(timeout('5s'));
 
+// 라우트 정의
 app.get('/', (request, response) => {
-    return response.status(200).send('GET 요청에 성공했습니다.');
+    // 10초 후 응답을 보냅니다.
+    setTimeout(() => {
+        response.send('Hello World!');
+    }, 10000);
 });
 
-app.post('/', (request, response) => {
-    return response.status(201).json({
-        status: 201,
-        message: 'POST 요청에 성공했습니다.',
-        data: request.body
-    });
-});
-
-app.put('/', (request, response) => {
-    return response.status(200).json({
-        status: 200,
-        message: 'PUT 요청에 성공했습니다.',
-        data: request.body
-    });
-});
-
-app.patch('/', (request, response) => {
-    return response.status(200).json({
-        status: 200,
-        message: 'PATCH 요청에 성공했습니다.',
-        data: request.body
-    });
-});
-
-app.delete('/', (request, response) => {
-    return response.status(204).end();
+// 타임아웃 발생 시 처리 핸들러
+app.use((request, response, next) => {
+    if (!request.timedout) next();
+    else
+        response.status(503).send({
+            status: 503,
+            message: 'Request_timeout',
+            data: null,
+        });
 });
 
 app.listen(port, () => {
-    console.log(`서버가 ${port}번 포트에서 실행 중입니다.`);
+    console.log(`Example app listening on port ${port}`);
 });
