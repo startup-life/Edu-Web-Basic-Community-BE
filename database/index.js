@@ -1,6 +1,5 @@
 const mysql = require('mysql2/promise');
 const colors = require('colors');
-const moment = require('moment');
 
 const config = {
     host: process.env.DB_HOST,
@@ -9,17 +8,14 @@ const config = {
     database: process.env.DB_DATABASE,
     port: process.env.DB_PORT,
     connectionLimit: 10,
-    waitForConnections: true
+    waitForConnections: true,
 };
 
 /* DB Pool 생성 */
 const pool = mysql.createPool(config);
 
-/* 쿼리 함수 */
 const query = async (queryString, params, response) => {
-    const now = moment().format('YYYY-MM-DD HH:mm:ss');
-    // 색상 선택: yellow, cyan, white, magenta, greenn, red, gray, blue, rainbow
-    console.log(`${now} -- ${colors.rainbow(queryString)}`);
+    console.log(colors.yellow(queryString));
 
     let connection;
     try {
