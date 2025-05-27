@@ -1,27 +1,33 @@
 {
-  "name": "edu-web-basic-community-be",
-  "version": "0.0.1",
-  "private": true,
+  "name": "your-app",
+  "version": "1.0.0",
+  "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write ."
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "connect-timeout": "^1.9.0",
-    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "debug": "^4.3.4",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^4.0.0",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.5.0",
-    "helmet": "^8.1.0",
-    "http-errors": "^2.0.0",
-    "prettier": "^3.2.5"
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "prettier": "^3.2.5",
+    "access-log": "^0.4.1",
+    "cookie-parser": "~1.4.6",
+    "dotenv": "^16.4.5",
+    "http-errors": "~2.0.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.2.0",
+    "path": "^0.12.7",
+    "rotating-file-stream": "^3.2.1"
   }
 }
