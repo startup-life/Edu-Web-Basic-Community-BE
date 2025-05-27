@@ -73,8 +73,19 @@ exports.writePost = async (request, response, next) => {
 
 // 게시글 목록 조회
 exports.getPosts = async (request, response, next) => {
+    const { offset, limit } = request.query;
+
     try {
-        const responseData = await postModel.getPosts();
+        if (!offset || !limit) {
+            const error = new Error(STATUS_MESSAGE.INVALID_OFFSET_OR_LIMIT);
+            error.status = STATUS_CODE.BAD_REQUEST;
+            throw error;
+        }
+        const requestData = {
+            offset: parseInt(offset, 10),
+            limit: parseInt(limit, 10),
+        };
+        const responseData = await postModel.getPosts(requestData);
 
         if (!responseData || responseData.length === 0) {
             const error = new Error(STATUS_MESSAGE.NOT_A_SINGLE_POST);
@@ -84,7 +95,7 @@ exports.getPosts = async (request, response, next) => {
 
         return response.status(STATUS_CODE.OK).json({
             message: STATUS_MESSAGE.GET_POSTS_SUCCESS,
-            data: responseData
+            data: responseData,
         });
     } catch (error) {
         next(error);
