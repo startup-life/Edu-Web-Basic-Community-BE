@@ -3,19 +3,22 @@ const userController = require('../controller/userController.js');
 
 const router = express.Router();
 
-// 모든 사용자를 가져오는 라우트
-router.get('/users', userController.getUsers);
-
-// ID로 특정 사용자를 가져오는 라우트
 router.get('/users/:user_id', userController.getUser);
+router.get('/users/auth/check', userController.checkAuth);
+router.get('/users/email/check', userController.checkEmail);
+router.get('/users/nickname/check', userController.checkNickname);
 
-// 사용자를 추가하는 라우트
-router.post('/users', userController.addUser);
+router.post('/users/signup', userController.signupUser);
+router.post('/users/login', userController.loginUser);
+router.post('/users/logout', userController.logoutUser);
 
-// 사용자 정보를 수정하는 라우트
-router.patch('/users/:user_id', userController.updateUser);
+router.put('/users/:user_id', userController.updateUser);
 
-// 사용자를 삭제하는 라우트
-router.delete('/users/:user_id', userController.deleteUser);
+router.patch(
+    '/users/:user_id/password',
+    userController.changePassword,
+);
+
+router.delete('/users/:user_id', userController.softDeleteUser);
 
 module.exports = router;

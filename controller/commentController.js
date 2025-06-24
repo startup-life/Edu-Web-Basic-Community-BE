@@ -1,160 +1,100 @@
 // Dummy data, JSON 구조
 const comments = [
     {
-        commentId: 1,
-        postId: 1, // 이 댓글이 속한 게시글의 ID
-        commentContent: 'Comment content of the first comment',
+        comment_id: 1,
+        comment_content: '좋은 글이네요.',
+        post_id: 1,
+        user_id: 2,
+        nickname: '밥',
+        created_at: '2024-12-10T10:00:00Z',
+        updated_at: '2024-12-10T10:00:00Z',
+        deleted_at: null,
     },
     {
-        commentId: 2,
-        postId: 1, // 이 댓글이 속한 게시글의 ID
-        commentContent: 'Comment content of the second comment',
-    },
-    {
-        commentId: 3,
-        postId: 2, // 이 댓글이 속한 게시글의 ID
-        commentContent: 'Comment content of the third comment',
+        comment_id: 2,
+        comment_content: '감사합니다!',
+        post_id: 1,
+        user_id: 1,
+        nickname: '앨리스',
+        created_at: '2024-12-10T10:05:00Z',
+        updated_at: '2024-12-10T10:05:00Z',
+        deleted_at: null,
     },
 ];
 
-// 모든 댓글 불러오기
-const getComments = (request, response) => {
-    try {
-        return response.status(200).json({
-            status: 200,
-            message: null,
-            data: comments,
-        });
-    } catch (error) {
-        console.error(error);
-        return response.status(500).json({
-            status: 500,
-            message: 'internal_server_error',
-            data: null,
-        });
-    }
-};
+/**
+ * 댓글 조회
+ * 댓글 작성
+ * 댓글 수정
+ * 댓글 삭제
+ */
 
-// 특정 댓글 불러오기
-const getComment = (request, response) => {
-    try {
-        const commentId = parseInt(request.params.comment_id);
-        const comment = comments.find(
-            comment => comment.commentId === commentId,
-        );
-        if (!comment) {
-            return response.status(404).json({
-                status: 404,
-                message: 'not_found_comment',
-                data: null,
-            });
-        }
-
-        return response.status(200).json({
-            status: 200,
-            message: null,
-            data: comment,
-        });
-    } catch (error) {
-        console.error(error);
-        return response.status(500).json({
-            status: 500,
-            message: 'internal_server_error',
-            data: null,
-        });
-    }
+// 댓글 조회
+exports.getComments = (request, response) => {
+    const postId = parseInt(request.params.post_id, 10);
+    const filteredComments = comments.filter(comment => comment.post_id === postId && !comment.deleted_at);
+    return response.status(200).json({ data: filteredComments });
 };
 
 // 댓글 작성
-const addComment = (request, response) => {
-    try {
-        const newComment = {
-            commentId: comments.length + 1,
-            postId: request.body.postId,
-            commentContent: request.body.commentContent,
-        };
-        comments.push(newComment);
+exports.writeComment = (request, response) => {
+    const postId = parseInt(request.params.post_id, 10);
+    const userId = parseInt(request.headers.userid, 10);
+    const { commentContent } = request.body;
 
-        return response.status(201).json({
-            status: 201,
-            message: 'create_comment_success',
-            data: newComment,
-        });
-    } catch (error) {
-        console.error(error);
-        return response.status(500).json({
-            status: 500,
-            message: 'internal_server_error',
-            data: null,
-        });
-    }
+    const newComment = {
+        comment_id: comments.length + 1,
+        comment_content: commentContent,
+        post_id: postId,
+        user_id: userId,
+        nickname: '사용자',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+    };
+
+    comments.push(newComment);
+    return response.status(201).json({ data: newComment });
 };
 
 // 댓글 수정
-const updateComment = (request, response) => {
-    try {
-        const comment = comments.find(
-            comment =>
-                comment.commentId === parseInt(request.params.comment_id),
-        );
-        if (!comment) {
-            return response.status(404).json({
-                status: 404,
-                message: 'not_found_comment',
-                data: null,
-            });
-        }
-        comment.commentContent = request.body.commentContent;
+exports.updateComment = (request, response) => {
+    const postId = parseInt(request.params.post_id, 10);
+    const commentId = parseInt(request.params.comment_id, 10);
+    const { commentContent } = request.body;
 
-        return response.status(200).json({
-            status: 200,
-            message: 'update_comment_success',
-            data: comment,
-        });
-    } catch (error) {
-        console.error(error);
-        return response.status(500).json({
-            status: 500,
-            message: 'internal_server_error',
-            data: null,
-        });
+    const comment = comments.find(comment =>
+        comment.post_id === postId &&
+        comment.comment_id === commentId &&
+        !comment.deleted_at
+    );
+
+    if (!comment) {
+        return response.status(404).json({ data: null });
     }
+
+    comment.comment_content = commentContent;
+    comment.updated_at = new Date().toISOString();
+
+    return response.status(200).json({ data: comment });
 };
 
 // 댓글 삭제
-const deleteComment = (request, response) => {
-    try {
-        const commentIndex = comments.findIndex(
-            comment =>
-                comment.commentId === parseInt(request.params.comment_id),
-        );
-        if (commentIndex === -1) {
-            return response.status(404).json({
-                status: 404,
-                message: 'not_found_comment',
-                data: null,
-            });
-        }
-        comments.splice(commentIndex, 1);
-        return response.status(200).json({
-            status: 200,
-            message: 'delete_comment_success',
-            data: null,
-        });
-    } catch (error) {
-        console.error(error);
-        return response.status(500).json({
-            status: 500,
-            message: 'internal_server_error',
-            data: null,
-        });
-    }
-};
+exports.softDeleteComment = (request, response) => {
+    const postId = parseInt(request.params.post_id, 10);
+    const commentId = parseInt(request.params.comment_id, 10);
 
-module.exports = {
-    getComments,
-    getComment,
-    addComment,
-    updateComment,
-    deleteComment
+    const comment = comments.find(comment =>
+        comment.post_id === postId &&
+        comment.comment_id === commentId &&
+        !comment.deleted_at
+    );
+
+    if (!comment) {
+        return response.status(404).json({ data: null });
+    }
+
+    comment.deleted_at = new Date().toISOString();
+
+    return response.status(200).json({ data: null });
 };
