@@ -44,7 +44,6 @@ exports.loginUser = async (request, response, next) => {
         const requestData = {
             email,
             password,
-            sessionId: request.sessionID,
         };
         const responseData = await userModel.loginUser(requestData, response);
 
@@ -53,6 +52,20 @@ exports.loginUser = async (request, response, next) => {
             error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
+
+        await new Promise((resolve, reject) => {
+            request.session.regenerate(err => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                request.session.userId = responseData.userId;
+                request.session.save(saveErr =>
+                    saveErr ? reject(saveErr) : resolve(),
+                );
+            });
+        });
+
         return response.status(STATUS_CODE.OK).json({
             message: STATUS_MESSAGE.LOGIN_SUCCESS,
             data: responseData,
@@ -121,8 +134,16 @@ exports.getUser = async (request, response, next) => {
 
     try {
         if (!userId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_USER_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
+            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
+            error.status = STATUS_CODE.UNAUTHORIZED;
+            throw error;
+        }
+        if (
+            request.userId &&
+            parseInt(userId, 10) !== parseInt(request.userId, 10)
+        ) {
+            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
+            error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
 
@@ -155,6 +176,14 @@ exports.updateUser = async (request, response, next) => {
         if (!userId) {
             const error = new Error(STATUS_MESSAGE.INVALID_USER_ID);
             error.status = STATUS_CODE.BAD_REQUEST;
+            throw error;
+        }
+        if (
+            request.userId &&
+            parseInt(userId, 10) !== parseInt(request.userId, 10)
+        ) {
+            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
+            error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
 
@@ -194,7 +223,7 @@ exports.updateUser = async (request, response, next) => {
 
 // 로그인 상태 체크
 exports.checkAuth = async (request, response, next) => {
-    const { userid: userId } = request.headers;
+    const userId = request.session && request.session.userId;
 
     try {
         if (!userId) {
@@ -228,7 +257,6 @@ exports.checkAuth = async (request, response, next) => {
                 email: userData.email,
                 nickname: userData.nickname,
                 profileImagePath: userData.profile_image,
-                auth_token: userData.session_id,
                 auth_status: true,
             },
         });
@@ -246,6 +274,14 @@ exports.changePassword = async (request, response, next) => {
         if (!userId) {
             const error = new Error(STATUS_MESSAGE.INVALID_USER_ID);
             error.status = STATUS_CODE.BAD_REQUEST;
+            throw error;
+        }
+        if (
+            request.userId &&
+            parseInt(userId, 10) !== parseInt(request.userId, 10)
+        ) {
+            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
+            error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
 
@@ -288,6 +324,14 @@ exports.softDeleteUser = async (request, response, next) => {
             error.status = STATUS_CODE.BAD_REQUEST;
             throw error;
         }
+        if (
+            request.userId &&
+            parseInt(userId, 10) !== parseInt(request.userId, 10)
+        ) {
+            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
+            error.status = STATUS_CODE.UNAUTHORIZED;
+            throw error;
+        }
 
         const requestData = {
             userId,
@@ -311,8 +355,6 @@ exports.softDeleteUser = async (request, response, next) => {
 
 // 로그아웃
 exports.logoutUser = async (request, response, next) => {
-    const { userid: userId } = request.headers;
-
     try {
         request.session.destroy(async error => {
             if (error) {
@@ -320,11 +362,7 @@ exports.logoutUser = async (request, response, next) => {
             }
 
             try {
-                const requestData = {
-                    userId,
-                };
-                await userModel.destroyUserSession(requestData, response);
-
+                response.clearCookie('connect.sid');
                 return response.status(STATUS_CODE.END).end();
             } catch (error) {
                 return next(error);

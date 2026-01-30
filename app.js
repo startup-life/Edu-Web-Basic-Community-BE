@@ -4,38 +4,38 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const route = require('./route/index.js');
-const dbConnect = require('./database/index.js');
 const { errorHandler } = require('./util/errorHandler.js');
 const timeout = require('connect-timeout');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const fs = require('fs');
 const { STATUS_MESSAGE } = require('./util/constant/httpStatusCode');
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3000;
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS ||
+    'http://localhost:8080')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // CORS 설정
-app.use(cors('*'));
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || FRONTEND_ORIGINS.includes(origin)) {
+                callback(null, true);
+                return;
+            }
+            callback(new Error('Not allowed by CORS'));
+        },
+        credentials: true,
+    }),
+);
 
-// 세션 초기화 함수
-const initSessionId = async () => {
-    try {
-        const sql = 'UPDATE user_table SET session_id = NULL;';
-        await dbConnect.query(sql);
-        startHttpServer();
-    } catch (error) {
-        console.error('Failed to initialize session IDs:', error);
-        process.exit(1); // 실패 시 프로세스 종료
-    }
-};
-
-// 서버 시작 함수
-const startHttpServer = () => {
-    app.listen(PORT, () => {
-        console.log(`edu-community app listening on port ${PORT}`);
-    });
-};
+if (IS_PRODUCTION) {
+    app.set('trust proxy', 1);
+}
 
 // 요청 속도 제한 설정
 const limiter = rateLimit({
@@ -66,7 +66,8 @@ app.use(
         saveUninitialized: false,
         cookie: {
             httpOnly: true,
-            secure: false,
+            secure: IS_PRODUCTION,
+            sameSite: IS_PRODUCTION ? 'none' : 'lax',
             maxAge: 1000 * 60 * 60 * 24 // 1 day
         }
     })
@@ -87,5 +88,6 @@ app.use('/', route);
 // Error Handler
 app.use(errorHandler);
 
-// 초기화 후 서버 시작
-initSessionId();
+app.listen(PORT, () => {
+    console.log(`edu-community app listening on port ${PORT}`);
+});
