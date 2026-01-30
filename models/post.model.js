@@ -1,5 +1,5 @@
-const dbConnect = require('../database/index.js');
-const { STATUS_MESSAGE } = require('../util/constant/httpStatusCode');
+const dbConnect = require('../databases/index.js');
+const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
 /**
  * 게시글 작성

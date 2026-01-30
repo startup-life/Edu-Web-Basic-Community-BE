@@ -1,8 +1,8 @@
 const {
     STATUS_CODE,
     STATUS_MESSAGE
-} = require('../util/constant/httpStatusCode');
-const { createValidationError } = require('../util/errorUtil.js');
+} = require('../constants/http-status-code.constant.js');
+const { createValidationError } = require('../utils/error.util.js');
 const addValidationError = (errors, field, code) => {
     if (!errors[field]) {
         errors[field] = [];

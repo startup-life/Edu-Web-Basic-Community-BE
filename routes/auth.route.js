@@ -1,6 +1,6 @@
 const express = require('express');
-const authController = require('../controller/authController.js');
-const isLoggedIn = require('../util/authUtil.js');
+const authController = require('../controllers/auth.controller.js');
+const isLoggedIn = require('../middleware/auth.middleware.js');
 
 const router = express.Router();
 

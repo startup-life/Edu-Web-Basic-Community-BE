@@ -1,4 +1,4 @@
-const dbConnect = require('../database/index.js');
+const dbConnect = require('../databases/index.js');
 
 /**
  * 댓글 조회

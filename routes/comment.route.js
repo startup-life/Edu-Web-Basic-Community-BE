@@ -1,6 +1,6 @@
 const express = require('express');
-const commentController = require('../controller/commentController.js');
-const isLoggedIn = require('../util/authUtil.js');
+const commentController = require('../controllers/comment.controller.js');
+const isLoggedIn = require('../middleware/auth.middleware.js');
 
 const router = express.Router();
 

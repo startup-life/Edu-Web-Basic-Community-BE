@@ -1,11 +1,11 @@
 const bcrypt = require('bcrypt');
-const userModel = require('../model/userModel.js');
-const { validEmail, validNickname, validPassword } = require('../util/validUtil.js');
-const { createValidationError } = require('../util/errorUtil.js');
+const userModel = require('../models/user.model.js');
+const { validEmail, validNickname, validPassword } = require('../utils/valid.util.js');
+const { createValidationError } = require('../utils/error.util.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
-} = require('../util/constant/httpStatusCode.js');
+} = require('../constants/http-status-code.constant.js');
 
 const SALT_ROUNDS = 10;
 const addValidationError = (errors, field, code) => {

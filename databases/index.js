@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 const colors = require('colors');
-const { STATUS_CODE, STATUS_MESSAGE } = require('../util/constant/httpStatusCode');
+const { STATUS_CODE, STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
 const config = {
     host: process.env.DB_HOST,

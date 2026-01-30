@@ -1,4 +1,4 @@
-const { STATUS_CODE, STATUS_MESSAGE } = require('./constant/httpStatusCode');
+const { STATUS_CODE, STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
 const isLoggedIn = async (req, res, next) => {
     const userId = req.session && req.session.userId ? req.session.userId : null;

@@ -3,12 +3,15 @@ require('dotenv').config({ path: './.env.dev' });
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
-const route = require('./route/index.js');
-const { errorHandler } = require('./util/errorHandler.js');
+const route = require('./routes/index.js');
+const { errorHandler } = require('./middleware/error-handler.middleware.js');
 const timeout = require('connect-timeout');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const { STATUS_CODE, STATUS_MESSAGE } = require('./util/constant/httpStatusCode');
+const {
+    STATUS_CODE,
+    STATUS_MESSAGE,
+} = require('./constants/http-status-code.constant.js');
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3000;

@@ -1,9 +1,9 @@
-const commentModel = require('../model/commentModel.js');
-const { createValidationError } = require('../util/errorUtil.js');
+const commentModel = require('../models/comment.model.js');
+const { createValidationError } = require('../utils/error.util.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
-} = require('../util/constant/httpStatusCode');
+} = require('../constants/http-status-code.constant.js');
 
 const addValidationError = (errors, field, code) => {
     if (!errors[field]) {

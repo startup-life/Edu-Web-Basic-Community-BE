@@ -1,7 +1,7 @@
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
-} = require('./constant/httpStatusCode');
+} = require('../constants/http-status-code.constant.js');
 
 const createValidationError = errors => {
     const error = new Error(STATUS_MESSAGE.INVALID_INPUT);
