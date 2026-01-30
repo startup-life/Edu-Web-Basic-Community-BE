@@ -1,8 +1,18 @@
 const postModel = require('../model/postModel.js');
+const { createValidationError } = require('../util/errorUtil.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE
 } = require('../util/constant/httpStatusCode');
+
+const addValidationError = (errors, field, code) => {
+    if (!errors[field]) {
+        errors[field] = [];
+    }
+    if (!errors[field].includes(code)) {
+        errors[field].push(code);
+    }
+};
 
 /**
  * 게시글 작성
@@ -18,28 +28,21 @@ exports.writePost = async (request, response, next) => {
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
+        const errors = {};
         if (!postTitle) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_TITLE);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
-        }
-
-        if (postTitle.length > 26) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_TITLE_LENGTH);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postTitle', 'REQUIRED');
+        } else if (postTitle.length > 26) {
+            addValidationError(errors, 'postTitle', 'TOO_LONG');
         }
 
         if (!postContent) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_CONTENT);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postContent', 'REQUIRED');
+        } else if (postContent.length > 1500) {
+            addValidationError(errors, 'postContent', 'TOO_LONG');
         }
 
-        if (postContent.length > 1500) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_CONTENT_LENGHT);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -63,7 +66,7 @@ exports.writePost = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.CREATED).json({
-            message: STATUS_MESSAGE.WRITE_POST_SUCCESS,
+            code: STATUS_MESSAGE.WRITE_POST_SUCCESS,
             data: responseData,
         });
     } catch (error) {
@@ -76,10 +79,19 @@ exports.getPosts = async (request, response, next) => {
     const { offset, limit } = request.query;
 
     try {
-        if (!offset || !limit) {
-            const error = new Error(STATUS_MESSAGE.INVALID_OFFSET_OR_LIMIT);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+        const errors = {};
+        if (offset === undefined || offset === null || offset === '') {
+            addValidationError(errors, 'offset', 'REQUIRED');
+        } else if (Number.isNaN(Number(offset))) {
+            addValidationError(errors, 'offset', 'INVALID_FORMAT');
+        }
+        if (limit === undefined || limit === null || limit === '') {
+            addValidationError(errors, 'limit', 'REQUIRED');
+        } else if (Number.isNaN(Number(limit))) {
+            addValidationError(errors, 'limit', 'INVALID_FORMAT');
+        }
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
         const requestData = {
             offset: parseInt(offset, 10),
@@ -94,7 +106,7 @@ exports.getPosts = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: STATUS_MESSAGE.GET_POSTS_SUCCESS,
+            code: STATUS_MESSAGE.GET_POSTS_SUCCESS,
             data: responseData,
         });
     } catch (error) {
@@ -107,10 +119,14 @@ exports.getPost = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
+        }
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -125,8 +141,8 @@ exports.getPost = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: null,
-            data: responseData
+            code: STATUS_MESSAGE.GET_POST_SUCCESS,
+            data: responseData,
         });
     } catch (error) {
         return next(error);
@@ -140,16 +156,27 @@ exports.updatePost = async (request, response, next) => {
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
         }
 
-        if (postTitle.length > 26) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_TITLE_LENGTH);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+        if (!postTitle) {
+            addValidationError(errors, 'postTitle', 'REQUIRED');
+        } else if (postTitle.length > 26) {
+            addValidationError(errors, 'postTitle', 'TOO_LONG');
+        }
+
+        if (!postContent) {
+            addValidationError(errors, 'postContent', 'REQUIRED');
+        } else if (postContent.length > 1500) {
+            addValidationError(errors, 'postContent', 'TOO_LONG');
+        }
+
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -168,7 +195,7 @@ exports.updatePost = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: STATUS_MESSAGE.UPDATE_POST_SUCCESS,
+            code: STATUS_MESSAGE.UPDATE_POST_SUCCESS,
             data: responseData,
         });
     } catch (error) {
@@ -181,10 +208,14 @@ exports.softDeletePost = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
+        }
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -199,8 +230,8 @@ exports.softDeletePost = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: STATUS_MESSAGE.DELETE_POST_SUCCESS,
-            data: null
+            code: STATUS_MESSAGE.DELETE_POST_SUCCESS,
+            data: null,
         });
     } catch (error) {
         return next(error);

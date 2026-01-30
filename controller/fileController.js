@@ -2,17 +2,26 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE
 } = require('../util/constant/httpStatusCode');
+const { createValidationError } = require('../util/errorUtil.js');
+const addValidationError = (errors, field, code) => {
+    if (!errors[field]) {
+        errors[field] = [];
+    }
+    if (!errors[field].includes(code)) {
+        errors[field].push(code);
+    }
+};
 
 exports.uploadFile = (request, response, next) => {
     try {
         if (!request.file) {
-            const error = new Error(STATUS_MESSAGE.INVALID_FILE);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            const errors = {};
+            addValidationError(errors, 'file', 'REQUIRED');
+            throw createValidationError(errors);
         }
 
         response.status(STATUS_CODE.CREATED).send({
-            message: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
+            code: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
             data: {
                 profileImageUrl: `/public/image/profile/${request.file.filename}`
             }
@@ -25,13 +34,13 @@ exports.uploadFile = (request, response, next) => {
 exports.uploadPostFile = (request, response, next) => {
     try {
         if (!request.file) {
-            const error = new Error(STATUS_MESSAGE.INVALID_FILE);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            const errors = {};
+            addValidationError(errors, 'file', 'REQUIRED');
+            throw createValidationError(errors);
         }
 
         response.status(STATUS_CODE.CREATED).send({
-            message: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
+            code: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
             data: {
                 filePath: `/public/image/post/${request.file.filename}`
             }

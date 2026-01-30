@@ -1,8 +1,18 @@
 const commentModel = require('../model/commentModel.js');
+const { createValidationError } = require('../util/errorUtil.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../util/constant/httpStatusCode');
+
+const addValidationError = (errors, field, code) => {
+    if (!errors[field]) {
+        errors[field] = [];
+    }
+    if (!errors[field].includes(code)) {
+        errors[field].push(code);
+    }
+};
 
 /**
  * 댓글 조회
@@ -16,10 +26,14 @@ exports.getComments = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
+        }
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -34,7 +48,7 @@ exports.getComments = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: null,
+            code: STATUS_MESSAGE.GET_COMMENTS_SUCCESS,
             data: responseData,
         });
     } catch (error) {
@@ -49,22 +63,21 @@ exports.writeComment = async (request, response, next) => {
     const { commentContent } = request.body;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
         }
 
         if (!commentContent) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_CONTENT);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'commentContent', 'REQUIRED');
+        } else if (commentContent.length > 1000) {
+            addValidationError(errors, 'commentContent', 'TOO_LONG');
         }
 
-        if (commentContent.length > 1000) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_CONTENT_LENGTH);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -88,7 +101,7 @@ exports.writeComment = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.CREATED).json({
-            message: STATUS_MESSAGE.WRITE_COMMENT_SUCCESS,
+            code: STATUS_MESSAGE.WRITE_COMMENT_SUCCESS,
             data: null,
         });
     } catch (error) {
@@ -103,28 +116,27 @@ exports.updateComment = async (request, response, next) => {
     const { commentContent } = request.body;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
         }
 
         if (!commentId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'commentId', 'REQUIRED');
+        } else if (Number.isNaN(Number(commentId))) {
+            addValidationError(errors, 'commentId', 'INVALID_FORMAT');
         }
 
         if (!commentContent) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_CONTENT);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'commentContent', 'REQUIRED');
+        } else if (commentContent.length > 1000) {
+            addValidationError(errors, 'commentContent', 'TOO_LONG');
         }
 
-        if (commentContent.length > 1000) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_CONTENT_LENGTH);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -148,7 +160,7 @@ exports.updateComment = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: STATUS_MESSAGE.UPDATE_COMMENT_SUCCESS,
+            code: STATUS_MESSAGE.UPDATE_COMMENT_SUCCESS,
             data: null,
         });
     } catch (error) {
@@ -162,16 +174,21 @@ exports.softDeleteComment = async (request, response, next) => {
     const userId = request.userId;
 
     try {
+        const errors = {};
         if (!postId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_POST_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'postId', 'REQUIRED');
+        } else if (Number.isNaN(Number(postId))) {
+            addValidationError(errors, 'postId', 'INVALID_FORMAT');
         }
 
         if (!commentId) {
-            const error = new Error(STATUS_MESSAGE.INVALID_COMMENT_ID);
-            error.status = STATUS_CODE.BAD_REQUEST;
-            throw error;
+            addValidationError(errors, 'commentId', 'REQUIRED');
+        } else if (Number.isNaN(Number(commentId))) {
+            addValidationError(errors, 'commentId', 'INVALID_FORMAT');
+        }
+
+        if (Object.keys(errors).length > 0) {
+            throw createValidationError(errors);
         }
 
         const requestData = {
@@ -200,7 +217,7 @@ exports.softDeleteComment = async (request, response, next) => {
         }
 
         return response.status(STATUS_CODE.OK).json({
-            message: STATUS_MESSAGE.DELETE_COMMENT_SUCCESS,
+            code: STATUS_MESSAGE.DELETE_COMMENT_SUCCESS,
             data: null,
         });
     } catch (error) {

@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise');
 const colors = require('colors');
+const { STATUS_CODE, STATUS_MESSAGE } = require('../util/constant/httpStatusCode');
 
 const config = {
     host: process.env.DB_HOST,
@@ -29,7 +30,10 @@ const query = async (queryString, params, response) => {
             console.error(error);
             if (connection) connection.release();
             if (response) {
-                return response.status(500).json({ code: 'Query Error' });
+                return response.status(STATUS_CODE.INTERNAL_SERVER_ERROR).json({
+                    code: STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+                    data: null,
+                });
             } else {
                 throw error;
             }
@@ -39,7 +43,10 @@ const query = async (queryString, params, response) => {
         console.error(error);
         if (connection) connection.release();
         if (response) {
-            return response.status(500).json({ code: 'DB Error' });
+            return response.status(STATUS_CODE.INTERNAL_SERVER_ERROR).json({
+                code: STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+                data: null,
+            });
         } else {
             throw error;
         }

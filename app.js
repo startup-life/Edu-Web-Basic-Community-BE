@@ -8,7 +8,7 @@ const { errorHandler } = require('./util/errorHandler.js');
 const timeout = require('connect-timeout');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const { STATUS_MESSAGE } = require('./util/constant/httpStatusCode');
+const { STATUS_CODE, STATUS_MESSAGE } = require('./util/constant/httpStatusCode');
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3000;
@@ -43,8 +43,13 @@ const limiter = rateLimit({
     windowMs: 10 * 1000,
     // 최대 100번의 요청을 허용
     max: 100,
-    // 제한 초과 시 전송할 메시지
-    message: STATUS_MESSAGE.TOO_MANY_REQUESTS,
+    // 제한 초과 시 전송할 응답
+    handler: (request, response, next) => {
+        response.status(STATUS_CODE.TOO_MANY_REQUESTS).json({
+            code: STATUS_MESSAGE.TOO_MANY_REQUESTS,
+            data: null,
+        });
+    },
     // RateLimit 헤더 정보를 표준으로 사용할 지 여부
     standardHeaders: true,
     // 레거시 X-RateLimit 헤더를 제거할 지 여부
