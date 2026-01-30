@@ -14,7 +14,7 @@ exports.uploadFile = (request, response, next) => {
         response.status(STATUS_CODE.CREATED).send({
             message: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
             data: {
-                filePath: `/public/image/profile/${request.file.filename}`
+                profileImageUrl: `/public/image/profile/${request.file.filename}`
             }
         });
     } catch (error) {

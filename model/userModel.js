@@ -29,6 +29,7 @@ exports.loginUser = async (requestData, response) => {
     const match = await bcrypt.compare(password, results[0].password);
     if (!match) return null;
 
+    let profileImageUrl = null;
     if (results[0].file_id !== null) {
         const profileSql = `SELECT file_path FROM file_table WHERE file_id = ? AND deleted_at IS NULL AND file_category = 1;`;
         const profileResults = await dbConnect.query(
@@ -36,16 +37,16 @@ exports.loginUser = async (requestData, response) => {
             [results[0].file_id],
             response,
         );
-        results[0].profileImagePath = profileResults[0].file_path;
-    } else {
-        results[0].profileImagePath = null;
+        if (profileResults && profileResults[0]) {
+            profileImageUrl = profileResults[0].file_path;
+        }
     }
 
     const user = {
         userId: results[0].user_id,
         email: results[0].email,
         nickname: results[0].nickname,
-        profileImagePath: results[0].profile_image_path,
+        profileImageUrl,
         created_at: results[0].created_at,
         updated_at: results[0].updated_at,
         deleted_at: results[0].deleted_at,
@@ -56,7 +57,7 @@ exports.loginUser = async (requestData, response) => {
 
 // 회원가입
 exports.signUpUser = async requestData => {
-    const { email, password, nickname, profileImagePath } = requestData;
+    const { email, password, nickname, profileImageUrl } = requestData;
 
     const checkEmailSql = `SELECT email FROM user_table WHERE email = ?;`;
     const checkEmailResults = await dbConnect.query(checkEmailSql, [email]);
@@ -76,14 +77,14 @@ exports.signUpUser = async requestData => {
     if (!userResults.insertId) return null;
 
     let profileImageId = null;
-    if (profileImagePath) {
+    if (profileImageUrl) {
         const insertFileSql = `
         INSERT INTO file_table (user_id, file_path, file_category)
         VALUES (?, ?, 1);
         `;
         const fileResults = await dbConnect.query(insertFileSql, [
             userResults.insertId,
-            profileImagePath,
+            profileImageUrl,
         ]);
 
         if (fileResults.insertId) {
@@ -127,7 +128,7 @@ exports.getUser = async requestData => {
         userId: userData[0].user_id,
         email: userData[0].email,
         nickname: userData[0].nickname,
-        profile_image: userData[0].file_path,
+        profileImageUrl: userData[0].file_path,
         created_at: userData[0].created_at,
         updated_at: userData[0].updated_at,
         deleted_at: userData[0].deleted_at,
@@ -137,7 +138,7 @@ exports.getUser = async requestData => {
 
 // 회원정보 수정
 exports.updateUser = async requestData => {
-    const { userId, nickname, profileImagePath } = requestData;
+    const { userId, nickname, profileImageUrl } = requestData;
 
     const updateUserSql = `
         UPDATE user_table
@@ -151,7 +152,16 @@ exports.updateUser = async requestData => {
 
     if (!updateUserResults) return null;
 
-    if (profileImagePath === undefined) return updateUserResults;
+    if (profileImageUrl === undefined) return updateUserResults;
+    if (profileImageUrl === null) {
+        const clearProfileSql = `
+        UPDATE user_table
+        SET file_id = NULL
+        WHERE user_id = ? AND deleted_at IS NULL;
+        `;
+        await dbConnect.query(clearProfileSql, [userId]);
+        return updateUserResults;
+    }
 
     const profileImageSql = `
         INSERT INTO file_table
@@ -160,7 +170,7 @@ exports.updateUser = async requestData => {
     `;
     const profileImageResults = await dbConnect.query(profileImageSql, [
         userId,
-        profileImagePath,
+        profileImageUrl,
     ]);
 
     if (!profileImageResults.insertId)
@@ -177,6 +187,27 @@ exports.updateUser = async requestData => {
     ]);
 
     return userProfileResults;
+};
+
+// 유저 기본 정보 불러오기 (세션 기반 체크용)
+exports.getUserSummary = async requestData => {
+    const { userId } = requestData;
+
+    const sql = `
+    SELECT user_id, email, nickname
+    FROM user_table
+    WHERE user_id = ? AND deleted_at IS NULL;
+    `;
+    const userData = await dbConnect.query(sql, [userId]);
+
+    if (!userData || userData.length === 0) return null;
+
+    return {
+        userId: userData[0].user_id,
+        email: userData[0].email,
+        nickname: userData[0].nickname,
+        profileImageUrl: null,
+    };
 };
 
 // 비밀번호 변경

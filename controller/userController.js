@@ -60,6 +60,10 @@ exports.loginUser = async (request, response, next) => {
                     return;
                 }
                 request.session.userId = responseData.userId;
+                request.session.email = responseData.email;
+                request.session.nickname = responseData.nickname;
+                request.session.profileImageUrl =
+                    responseData.profileImageUrl ?? null;
                 request.session.save(saveErr =>
                     saveErr ? reject(saveErr) : resolve(),
                 );
@@ -77,7 +81,7 @@ exports.loginUser = async (request, response, next) => {
 
 // 회원가입
 exports.signupUser = async (request, response, next) => {
-    const { email, password, nickname, profileImagePath } = request.body;
+    const { email, password, nickname, profileImageUrl } = request.body;
 
     try {
         if (!email || !validEmail(email)) {
@@ -102,7 +106,7 @@ exports.signupUser = async (request, response, next) => {
             email,
             password: hashedPassword,
             nickname,
-            profileImagePath: profileImagePath || null,
+            profileImageUrl: profileImageUrl || null,
         };
 
         const resSignupData = await userModel.signUpUser(reqSignupData);
@@ -170,7 +174,7 @@ exports.getUser = async (request, response, next) => {
 // 회원정보 수정
 exports.updateUser = async (request, response, next) => {
     const { user_id: userId } = request.params;
-    const { nickname, profileImagePath } = request.body;
+    const { nickname, profileImageUrl } = request.body;
 
     try {
         if (!userId) {
@@ -196,7 +200,7 @@ exports.updateUser = async (request, response, next) => {
         const requestData = {
             userId,
             nickname,
-            profileImagePath,
+            profileImageUrl,
         };
         const responseData = await userModel.updateUser(requestData);
 
@@ -211,6 +215,11 @@ exports.updateUser = async (request, response, next) => {
             error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
             throw error;
         }
+
+        if (profileImageUrl !== undefined) {
+            request.session.profileImageUrl = profileImageUrl ?? null;
+        }
+        request.session.nickname = nickname;
 
         return response.status(STATUS_CODE.CREATED).json({
             message: STATUS_MESSAGE.UPDATE_USER_DATA_SUCCESS,
@@ -235,28 +244,51 @@ exports.checkAuth = async (request, response, next) => {
         const requestData = {
             userId,
         };
+        let email = request.session && request.session.email;
+        let nickname = request.session && request.session.nickname;
+        const hasSessionProfile =
+            request.session &&
+            Object.prototype.hasOwnProperty.call(
+                request.session,
+                'profileImageUrl',
+            );
+        let profileImageUrl =
+            hasSessionProfile && request.session.profileImageUrl
+                ? request.session.profileImageUrl
+                : null;
 
-        const userData = await userModel.getUser(requestData);
+        if (!email || !nickname || !hasSessionProfile) {
+            const userData = hasSessionProfile
+                ? await userModel.getUserSummary(requestData)
+                : await userModel.getUser(requestData);
 
-        if (!userData) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
+            if (!userData) {
+                const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
+                error.status = STATUS_CODE.NOT_FOUND;
+                throw error;
+            }
 
-        if (parseInt(userData.userId, 10) !== parseInt(userId, 10)) {
-            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
+            email = userData.email;
+            nickname = userData.nickname;
+            if (
+                profileImageUrl === null &&
+                userData.profileImageUrl !== undefined
+            ) {
+                profileImageUrl = userData.profileImageUrl;
+            }
+
+            request.session.email = email;
+            request.session.nickname = nickname;
+            request.session.profileImageUrl = profileImageUrl;
         }
 
         return response.status(STATUS_CODE.OK).json({
             message: null,
             data: {
                 userId,
-                email: userData.email,
-                nickname: userData.nickname,
-                profileImagePath: userData.profile_image,
+                email,
+                nickname,
+                profileImageUrl,
                 auth_status: true,
             },
         });

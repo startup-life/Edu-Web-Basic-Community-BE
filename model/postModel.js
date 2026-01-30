@@ -95,7 +95,7 @@ exports.getPosts = async (requestData, response) => {
             WHEN post_table.hits >= 1000 THEN CONCAT(ROUND(post_table.hits / 1000, 1), 'K')
             ELSE post_table.hits
         END as hits,
-        COALESCE(file_table.file_path, NULL) AS profileImagePath
+        COALESCE(file_table.file_path, NULL) AS profileImageUrl
     FROM post_table
             LEFT JOIN user_table ON post_table.user_id = user_table.user_id
             LEFT JOIN file_table ON user_table.file_id = file_table.file_id
@@ -150,6 +150,7 @@ exports.getPost = async (requestData, response) => {
     if (!results || results.length === 0) return null;
 
     const postResult = results[0];
+    postResult.profileImage = null;
 
     // 조회수 증가
     const hitsSql = `
@@ -168,7 +169,7 @@ exports.getPost = async (requestData, response) => {
     );
 
     // 유저 프로필 이미지 가져오기
-    if (userResults && userResults.length > 0) {
+    if (userResults && userResults.length > 0 && userResults[0].file_id) {
         const profileImageSql = `
             SELECT file_path FROM file_table WHERE file_id = ? AND file_category = 1 AND user_id = ?;
             `;

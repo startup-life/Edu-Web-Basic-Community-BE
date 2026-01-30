@@ -1,2 +1,15 @@
 .idea
+.env
 node_modules/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+/.cache
+/tmp
+
+# 업로드 파일은 제외하고 폴더 구조만 유지
+/public/**
+!/public/**/.gitkeep
