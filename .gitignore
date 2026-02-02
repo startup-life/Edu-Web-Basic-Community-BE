@@ -1,5 +1,6 @@
 .idea
 .env.*
+.env.dev
 !.env.example
 node_modules/
 logs/
