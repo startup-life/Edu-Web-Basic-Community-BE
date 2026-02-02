@@ -1,18 +1,8 @@
 const postModel = require('../models/post.model.js');
-const { createValidationError } = require('../utils/error.util.js');
 const {
     STATUS_CODE,
-    STATUS_MESSAGE
+    STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
-
-const addValidationError = (errors, field, code) => {
-    if (!errors[field]) {
-        errors[field] = [];
-    }
-    if (!errors[field].includes(code)) {
-        errors[field].push(code);
-    }
-};
 
 /**
  * 게시글 작성
@@ -28,23 +18,6 @@ exports.writePost = async (request, response, next) => {
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
-        const errors = {};
-        if (!postTitle) {
-            addValidationError(errors, 'postTitle', 'REQUIRED');
-        } else if (postTitle.length > 26) {
-            addValidationError(errors, 'postTitle', 'TOO_LONG');
-        }
-
-        if (!postContent) {
-            addValidationError(errors, 'postContent', 'REQUIRED');
-        } else if (postContent.length > 1500) {
-            addValidationError(errors, 'postContent', 'TOO_LONG');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             userId,
             postTitle,
@@ -79,20 +52,6 @@ exports.getPosts = async (request, response, next) => {
     const { offset, limit } = request.query;
 
     try {
-        const errors = {};
-        if (offset === undefined || offset === null || offset === '') {
-            addValidationError(errors, 'offset', 'REQUIRED');
-        } else if (Number.isNaN(Number(offset))) {
-            addValidationError(errors, 'offset', 'INVALID_FORMAT');
-        }
-        if (limit === undefined || limit === null || limit === '') {
-            addValidationError(errors, 'limit', 'REQUIRED');
-        } else if (Number.isNaN(Number(limit))) {
-            addValidationError(errors, 'limit', 'INVALID_FORMAT');
-        }
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
         const requestData = {
             offset: parseInt(offset, 10),
             limit: parseInt(limit, 10),
@@ -119,18 +78,8 @@ exports.getPost = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
-            postId
+            postId,
         };
         const responseData = await postModel.getPost(requestData, response);
 
@@ -156,29 +105,6 @@ exports.updatePost = async (request, response, next) => {
     const { postTitle, postContent, attachFilePath } = request.body;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-
-        if (!postTitle) {
-            addValidationError(errors, 'postTitle', 'REQUIRED');
-        } else if (postTitle.length > 26) {
-            addValidationError(errors, 'postTitle', 'TOO_LONG');
-        }
-
-        if (!postContent) {
-            addValidationError(errors, 'postContent', 'REQUIRED');
-        } else if (postContent.length > 1500) {
-            addValidationError(errors, 'postContent', 'TOO_LONG');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             postId,
             userId,
@@ -208,18 +134,8 @@ exports.softDeletePost = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
-            postId
+            postId,
         };
         const results = await postModel.softDeletePost(requestData);
 

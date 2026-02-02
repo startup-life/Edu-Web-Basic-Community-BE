@@ -1,18 +1,8 @@
 const commentModel = require('../models/comment.model.js');
-const { createValidationError } = require('../utils/error.util.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
-
-const addValidationError = (errors, field, code) => {
-    if (!errors[field]) {
-        errors[field] = [];
-    }
-    if (!errors[field].includes(code)) {
-        errors[field].push(code);
-    }
-};
 
 /**
  * 댓글 조회
@@ -26,16 +16,6 @@ exports.getComments = async (request, response, next) => {
     const { post_id: postId } = request.params;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             postId,
         };
@@ -63,23 +43,6 @@ exports.writeComment = async (request, response, next) => {
     const { commentContent } = request.body;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-
-        if (!commentContent) {
-            addValidationError(errors, 'commentContent', 'REQUIRED');
-        } else if (commentContent.length > 1000) {
-            addValidationError(errors, 'commentContent', 'TOO_LONG');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             postId,
             userId,
@@ -116,29 +79,6 @@ exports.updateComment = async (request, response, next) => {
     const { commentContent } = request.body;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-
-        if (!commentId) {
-            addValidationError(errors, 'commentId', 'REQUIRED');
-        } else if (Number.isNaN(Number(commentId))) {
-            addValidationError(errors, 'commentId', 'INVALID_FORMAT');
-        }
-
-        if (!commentContent) {
-            addValidationError(errors, 'commentContent', 'REQUIRED');
-        } else if (commentContent.length > 1000) {
-            addValidationError(errors, 'commentContent', 'TOO_LONG');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             postId,
             commentId,
@@ -174,23 +114,6 @@ exports.softDeleteComment = async (request, response, next) => {
     const userId = request.userId;
 
     try {
-        const errors = {};
-        if (!postId) {
-            addValidationError(errors, 'postId', 'REQUIRED');
-        } else if (Number.isNaN(Number(postId))) {
-            addValidationError(errors, 'postId', 'INVALID_FORMAT');
-        }
-
-        if (!commentId) {
-            addValidationError(errors, 'commentId', 'REQUIRED');
-        } else if (Number.isNaN(Number(commentId))) {
-            addValidationError(errors, 'commentId', 'INVALID_FORMAT');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             postId,
             commentId,

@@ -1,39 +1,11 @@
 const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model.js');
 const {
-    validEmail,
-    validNickname,
-    validPassword,
-} = require('../utils/valid.util.js');
-const { createValidationError } = require('../utils/error.util.js');
-const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
 
 const SALT_ROUNDS = 10;
-const addValidationError = (errors, field, code) => {
-    if (!errors[field]) {
-        errors[field] = [];
-    }
-    if (!errors[field].includes(code)) {
-        errors[field].push(code);
-    }
-};
-
-const addPasswordValidationErrors = (errors, password) => {
-    if (!password) {
-        addValidationError(errors, 'password', 'REQUIRED');
-        return;
-    }
-    if (password.length < 8) {
-        addValidationError(errors, 'password', 'TOO_SHORT');
-    } else if (password.length > 20) {
-        addValidationError(errors, 'password', 'TOO_LONG');
-    } else if (!validPassword(password)) {
-        addValidationError(errors, 'password', 'INVALID_FORMAT');
-    }
-};
 
 /**
  * 로그인
@@ -47,17 +19,6 @@ exports.loginUser = async (request, response, next) => {
     const { email, password } = request.body;
 
     try {
-        const errors = {};
-        if (!email) {
-            addValidationError(errors, 'email', 'REQUIRED');
-        } else if (!validEmail(email)) {
-            addValidationError(errors, 'email', 'INVALID_FORMAT');
-        }
-        addPasswordValidationErrors(errors, password);
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const requestData = {
             email,
             password,
@@ -101,37 +62,6 @@ exports.signupUser = async (request, response, next) => {
     const { email, password, nickname, profileImageUrl } = request.body;
 
     try {
-        const errors = {};
-        if (!email) {
-            addValidationError(errors, 'email', 'REQUIRED');
-        } else if (!validEmail(email)) {
-            addValidationError(errors, 'email', 'INVALID_FORMAT');
-        }
-
-        if (!nickname) {
-            addValidationError(errors, 'nickname', 'REQUIRED');
-        } else if (nickname.length < 2) {
-            addValidationError(errors, 'nickname', 'TOO_SHORT');
-        } else if (nickname.length > 10) {
-            addValidationError(errors, 'nickname', 'TOO_LONG');
-        } else if (!validNickname(nickname)) {
-            addValidationError(errors, 'nickname', 'INVALID_FORMAT');
-        }
-
-        addPasswordValidationErrors(errors, password);
-
-        if (
-            profileImageUrl !== undefined &&
-            profileImageUrl !== null &&
-            typeof profileImageUrl !== 'string'
-        ) {
-            addValidationError(errors, 'profileImageUrl', 'INVALID_FORMAT');
-        }
-
-        if (Object.keys(errors).length > 0) {
-            throw createValidationError(errors);
-        }
-
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const reqSignupData = {
