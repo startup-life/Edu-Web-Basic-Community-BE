@@ -81,10 +81,10 @@ exports.getPosts = async (requestData, response) => {
         post_table.updated_at,
         post_table.deleted_at,
         CASE
-            WHEN post_table.\`like\` >= 1000000 THEN CONCAT(ROUND(post_table.\`like\` / 1000000, 1), 'M')
-            WHEN post_table.\`like\` >= 1000 THEN CONCAT(ROUND(post_table.\`like\` / 1000, 1), 'K')
-            ELSE post_table.\`like\`
-        END as \`like\`,
+            WHEN post_table.like_count >= 1000000 THEN CONCAT(ROUND(post_table.like_count / 1000000, 1), 'M')
+            WHEN post_table.like_count >= 1000 THEN CONCAT(ROUND(post_table.like_count / 1000, 1), 'K')
+            ELSE post_table.like_count
+        END as like_count,
         CASE
             WHEN post_table.comment_count >= 1000000 THEN CONCAT(ROUND(post_table.comment_count / 1000000, 1), 'M')
             WHEN post_table.comment_count >= 1000 THEN CONCAT(ROUND(post_table.comment_count / 1000, 1), 'K')
@@ -126,10 +126,10 @@ exports.getPost = async (requestData, response) => {
         post_table.updated_at,
         post_table.deleted_at,
         CASE
-            WHEN post_table.\`like\` >= 1000000 THEN CONCAT(ROUND(post_table.\`like\` / 1000000, 1), 'M')
-            WHEN post_table.\`like\` >= 1000 THEN CONCAT(ROUND(post_table.\`like\` / 1000, 1), 'K')
-            ELSE CAST(post_table.\`like\` AS CHAR)
-        END as \`like\`,
+            WHEN post_table.like_count >= 1000000 THEN CONCAT(ROUND(post_table.like_count / 1000000, 1), 'M')
+            WHEN post_table.like_count >= 1000 THEN CONCAT(ROUND(post_table.like_count / 1000, 1), 'K')
+            ELSE CAST(post_table.like_count AS CHAR)
+        END as like_count,
         CASE
             WHEN post_table.comment_count >= 1000000 THEN CONCAT(ROUND(post_table.comment_count / 1000000, 1), 'M')
             WHEN post_table.comment_count >= 1000 THEN CONCAT(ROUND(post_table.comment_count / 1000, 1), 'K')

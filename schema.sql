@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS post
     `file_id`        INT UNSIGNED    NULL                                   COMMENT '파일 인덱스. 첨부 파일 있는 경우. 첨부 파일의 인덱스',
     `user_id`        INT UNSIGNED    NOT NULL                               COMMENT '유저 인덱스',
     `nickname`       VARCHAR(45)     NOT NULL                               COMMENT '닉네임',
-    `like`           INT UNSIGNED    NOT NULL    DEFAULT 0                  COMMENT '좋아요. 1,000 이상 -> 1K',
+    `like_count`     INT UNSIGNED    NOT NULL    DEFAULT 0                  COMMENT '좋아요. 1,000 이상 -> 1K',
     `comment_count`  INT UNSIGNED    NOT NULL    DEFAULT 0                  COMMENT '댓글 개수. 1,000 이상 -> 1K',
     `hits`           INT UNSIGNED    NOT NULL    DEFAULT 0                  COMMENT '조회수. 1,000 이상 -> 1K',
     `created_at`     TIMESTAMP       NULL        DEFAULT CURRENT_TIMESTAMP  COMMENT '생성한 때',
