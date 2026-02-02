@@ -1,5 +1,9 @@
 const dbConnect = require('../databases/index.js');
 const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
+const {
+    isEmailTaken,
+    isNicknameTaken,
+} = require('../utils/user-duplicate.util.js');
 
 /**
  * 유저 정보 불러오기
@@ -126,22 +130,16 @@ exports.softDeleteUser = async requestData => {
 exports.checkEmail = async requestData => {
     const { email } = requestData;
 
-    const sql = `SELECT email FROM user_table WHERE email = ?;`;
-    const results = await dbConnect.query(sql, [email]);
-
-    if (!results || results.length === 0) return null;
-
-    return results;
+    const taken = await isEmailTaken(email);
+    if (!taken) return null;
+    return { email };
 };
 
 // 닉네임 중복 체크
 exports.checkNickname = async requestData => {
     const { nickname } = requestData;
 
-    const sql = `SELECT nickname FROM user_table WHERE nickname = ?;`;
-    const results = await dbConnect.query(sql, [nickname]);
-
-    if (!results || results.length === 0) return null;
-
-    return results;
+    const taken = await isNicknameTaken(nickname);
+    if (!taken) return null;
+    return { nickname };
 };

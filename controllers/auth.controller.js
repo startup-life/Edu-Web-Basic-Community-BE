@@ -1,10 +1,14 @@
 const bcrypt = require('bcrypt');
 const authModel = require('../models/auth.model.js');
-const userModel = require('../models/user.model.js');
 const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
+const {
+    regenerateSession,
+    saveSession,
+    destroySession,
+} = require('../utils/session.util.js');
 
 const SALT_ROUNDS = 10;
 
@@ -29,19 +33,7 @@ exports.signupUser = async (request, response, next) => {
             profileImageUrl: profileImageUrl || null,
         };
 
-        const responseData = await authModel.signUpUser(requestData);
-
-        if (responseData === STATUS_MESSAGE.ALREADY_EXIST_EMAIL) {
-            const error = new Error(STATUS_MESSAGE.ALREADY_EXIST_EMAIL);
-            error.status = STATUS_CODE.CONFLICT;
-            throw error;
-        }
-
-        if (responseData === null) {
-            const error = new Error(STATUS_MESSAGE.SIGNUP_FAILED);
-            error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
-            throw error;
-        }
+        await authModel.signUpUser(requestData);
 
         return response.status(STATUS_CODE.CREATED).json({
             code: STATUS_MESSAGE.SIGNUP_SUCCESS,
@@ -63,28 +55,12 @@ exports.loginUser = async (request, response, next) => {
         };
         const responseData = await authModel.loginUser(requestData, response);
 
-        if (!responseData || responseData === null) {
-            const error = new Error(STATUS_MESSAGE.INVALID_EMAIL_OR_PASSWORD);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
-
-        await new Promise((resolve, reject) => {
-            request.session.regenerate(err => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                request.session.userId = responseData.userId;
-                request.session.email = responseData.email;
-                request.session.nickname = responseData.nickname;
-                request.session.profileImageUrl =
-                    responseData.profileImageUrl ?? null;
-                request.session.save(saveErr =>
-                    saveErr ? reject(saveErr) : resolve(),
-                );
-            });
-        });
+        await regenerateSession(request);
+        request.session.userId = responseData.userId;
+        request.session.email = responseData.email;
+        request.session.nickname = responseData.nickname;
+        request.session.profileImageUrl = responseData.profileImageUrl ?? null;
+        await saveSession(request);
 
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.LOGIN_SUCCESS,
@@ -106,55 +82,26 @@ exports.checkAuth = async (request, response, next) => {
             throw error;
         }
 
-        const requestData = {
-            userId,
-        };
-        let email = request.session && request.session.email;
-        let nickname = request.session && request.session.nickname;
+        const email = request.session && request.session.email;
+        const nickname = request.session && request.session.nickname;
         const hasSessionProfile =
             request.session &&
             Object.prototype.hasOwnProperty.call(
                 request.session,
                 'profileImageUrl',
             );
-        let profileImageUrl =
+        const profileImageUrl =
             hasSessionProfile && request.session.profileImageUrl
                 ? request.session.profileImageUrl
                 : null;
 
-        if (!email || !nickname || !hasSessionProfile) {
-            const userData = hasSessionProfile
-                ? await authModel.getUserSummary(requestData)
-                : await userModel.getUser(requestData);
-
-            if (!userData) {
-                const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-                error.status = STATUS_CODE.NOT_FOUND;
-                throw error;
-            }
-
-            email = userData.email;
-            nickname = userData.nickname;
-            if (
-                profileImageUrl === null &&
-                userData.profileImageUrl !== undefined
-            ) {
-                profileImageUrl = userData.profileImageUrl;
-            }
-
-            request.session.email = email;
-            request.session.nickname = nickname;
-            request.session.profileImageUrl = profileImageUrl;
-        }
-
         return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.AUTH_CHECK_SUCCESS,
+            code: STATUS_MESSAGE.AUTH_SUCCESS,
             data: {
                 userId,
                 email,
                 nickname,
                 profileImageUrl,
-                auth_status: true,
             },
         });
     } catch (error) {
@@ -165,20 +112,12 @@ exports.checkAuth = async (request, response, next) => {
 // 로그아웃
 exports.logoutUser = async (request, response, next) => {
     try {
-        request.session.destroy(async error => {
-            if (error) {
-                return next(error);
-            }
-
-            try {
-                response.clearCookie('connect.sid');
-                return response.status(STATUS_CODE.OK).json({
-                    code: STATUS_MESSAGE.LOGOUT_SUCCESS,
-                    data: null,
-                });
-            } catch (error) {
-                return next(error);
-            }
+        await destroySession(request);
+        response.clearCookie('connect.sid');
+        
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.LOGOUT_SUCCESS,
+            data: null,
         });
     } catch (error) {
         return next(error);
