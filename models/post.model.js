@@ -14,7 +14,7 @@ exports.writePost = async requestData => {
     const { userId, postTitle, postContent, attachFilePath } = requestData;
 
     const nicknameSql = `
-    SELECT nickname FROM user_table
+    SELECT nickname FROM user
     WHERE user_id = ? AND deleted_at IS NULL;
     `;
     const nicknameResults = await dbConnect.query(nicknameSql, [userId]);
@@ -24,8 +24,8 @@ exports.writePost = async requestData => {
     }
 
     const writePostSql = `
-    INSERT INTO post_table
-    (user_id, nickname, post_title, post_content)
+    INSERT INTO post
+    (user_id, nickname, title, content)
     VALUES (?, ?, ?, ?);
     `;
     const writePostResults = await dbConnect.query(writePostSql, [
@@ -40,8 +40,8 @@ exports.writePost = async requestData => {
 
     if (attachFilePath) {
         const postFilePathSql = `
-        INSERT INTO file_table
-        (user_id, post_id, file_path, file_category)
+        INSERT INTO file
+        (user_id, post_id, path, category)
         VALUES (?, ?, ?, 2);
         `;
         const postFileResults = await dbConnect.query(postFilePathSql, [
@@ -51,7 +51,7 @@ exports.writePost = async requestData => {
         ]);
 
         const updatePostSql = `
-        UPDATE post_table
+        UPDATE post
         SET file_id = ?
         WHERE post_id = ?;
         `;
@@ -71,36 +71,36 @@ exports.getPosts = async (requestData, response) => {
     const { offset, limit } = requestData;
     const sql = `
     SELECT
-        post_table.post_id,
-        post_table.post_title,
-        post_table.post_content,
-        post_table.file_id,
-        post_table.user_id,
-        post_table.nickname,
-        post_table.created_at,
-        post_table.updated_at,
-        post_table.deleted_at,
+        post.post_id,
+        post.title,
+        post.content,
+        post.file_id,
+        post.user_id,
+        post.nickname,
+        post.created_at,
+        post.updated_at,
+        post.deleted_at,
         CASE
-            WHEN post_table.like_count >= 1000000 THEN CONCAT(ROUND(post_table.like_count / 1000000, 1), 'M')
-            WHEN post_table.like_count >= 1000 THEN CONCAT(ROUND(post_table.like_count / 1000, 1), 'K')
-            ELSE post_table.like_count
+            WHEN post.like_count >= 1000000 THEN CONCAT(ROUND(post.like_count / 1000000, 1), 'M')
+            WHEN post.like_count >= 1000 THEN CONCAT(ROUND(post.like_count / 1000, 1), 'K')
+            ELSE post.like_count
         END as like_count,
         CASE
-            WHEN post_table.comment_count >= 1000000 THEN CONCAT(ROUND(post_table.comment_count / 1000000, 1), 'M')
-            WHEN post_table.comment_count >= 1000 THEN CONCAT(ROUND(post_table.comment_count / 1000, 1), 'K')
-            ELSE post_table.comment_count
+            WHEN post.comment_count >= 1000000 THEN CONCAT(ROUND(post.comment_count / 1000000, 1), 'M')
+            WHEN post.comment_count >= 1000 THEN CONCAT(ROUND(post.comment_count / 1000, 1), 'K')
+            ELSE post.comment_count
         END as comment_count,
         CASE
-            WHEN post_table.hits >= 1000000 THEN CONCAT(ROUND(post_table.hits / 1000000, 1), 'M')
-            WHEN post_table.hits >= 1000 THEN CONCAT(ROUND(post_table.hits / 1000, 1), 'K')
-            ELSE post_table.hits
-        END as hits,
-        COALESCE(file_table.file_path, NULL) AS profileImageUrl
-    FROM post_table
-            LEFT JOIN user_table ON post_table.user_id = user_table.user_id
-            LEFT JOIN file_table ON user_table.file_id = file_table.file_id
-    WHERE post_table.deleted_at IS NULL
-    ORDER BY post_table.created_at DESC
+            WHEN post.view_count >= 1000000 THEN CONCAT(ROUND(post.view_count / 1000000, 1), 'M')
+            WHEN post.view_count >= 1000 THEN CONCAT(ROUND(post.view_count / 1000, 1), 'K')
+            ELSE post.view_count
+        END as view_count,
+        COALESCE(file.path, NULL) AS profileImageUrl
+    FROM post
+            LEFT JOIN user ON post.user_id = user.user_id
+            LEFT JOIN file ON user.file_id = file.file_id
+    WHERE post.deleted_at IS NULL
+    ORDER BY post.created_at DESC
     LIMIT ${limit} OFFSET ${offset};
     `;
     const results = await dbConnect.query(sql, response);
@@ -116,34 +116,34 @@ exports.getPost = async (requestData, response) => {
     // 게시글 정보 가져오기
     const postSql = `
     SELECT 
-        post_table.post_id,
-        post_table.post_title,
-        post_table.post_content,
-        post_table.file_id,
-        post_table.user_id,
-        post_table.nickname,
-        post_table.created_at,
-        post_table.updated_at,
-        post_table.deleted_at,
+        post.post_id,
+        post.title,
+        post.content,
+        post.file_id,
+        post.user_id,
+        post.nickname,
+        post.created_at,
+        post.updated_at,
+        post.deleted_at,
         CASE
-            WHEN post_table.like_count >= 1000000 THEN CONCAT(ROUND(post_table.like_count / 1000000, 1), 'M')
-            WHEN post_table.like_count >= 1000 THEN CONCAT(ROUND(post_table.like_count / 1000, 1), 'K')
-            ELSE CAST(post_table.like_count AS CHAR)
+            WHEN post.like_count >= 1000000 THEN CONCAT(ROUND(post.like_count / 1000000, 1), 'M')
+            WHEN post.like_count >= 1000 THEN CONCAT(ROUND(post.like_count / 1000, 1), 'K')
+            ELSE CAST(post.like_count AS CHAR)
         END as like_count,
         CASE
-            WHEN post_table.comment_count >= 1000000 THEN CONCAT(ROUND(post_table.comment_count / 1000000, 1), 'M')
-            WHEN post_table.comment_count >= 1000 THEN CONCAT(ROUND(post_table.comment_count / 1000, 1), 'K')
-            ELSE CAST(post_table.comment_count AS CHAR)
+            WHEN post.comment_count >= 1000000 THEN CONCAT(ROUND(post.comment_count / 1000000, 1), 'M')
+            WHEN post.comment_count >= 1000 THEN CONCAT(ROUND(post.comment_count / 1000, 1), 'K')
+            ELSE CAST(post.comment_count AS CHAR)
         END as comment_count,
         CASE
-            WHEN post_table.hits >= 1000000 THEN CONCAT(ROUND(post_table.hits / 1000000, 1), 'M')
-            WHEN post_table.hits >= 1000 THEN CONCAT(ROUND(post_table.hits / 1000, 1), 'K')
-            ELSE CAST(post_table.hits AS CHAR)
-        END as hits,
-        COALESCE(file_table.file_path, NULL) AS filePath
-    FROM post_table
-    LEFT JOIN file_table ON post_table.file_id = file_table.file_id
-    WHERE post_table.post_id = ? AND post_table.deleted_at IS NULL;
+            WHEN post.view_count >= 1000000 THEN CONCAT(ROUND(post.view_count / 1000000, 1), 'M')
+            WHEN post.view_count >= 1000 THEN CONCAT(ROUND(post.view_count / 1000, 1), 'K')
+            ELSE CAST(post.view_count AS CHAR)
+        END as view_count,
+        COALESCE(file.path, NULL) AS filePath
+    FROM post
+    LEFT JOIN file ON post.file_id = file.file_id
+    WHERE post.post_id = ? AND post.deleted_at IS NULL;
     `;
     const results = await dbConnect.query(postSql, [postId], response);
 
@@ -154,13 +154,13 @@ exports.getPost = async (requestData, response) => {
 
     // 조회수 증가
     const hitsSql = `
-        UPDATE post_table SET hits = hits + 1 WHERE post_id = ? AND deleted_at IS NULL;
+        UPDATE post SET view_count = view_count + 1 WHERE post_id = ? AND deleted_at IS NULL;
         `;
     await dbConnect.query(hitsSql, [postId], response);
 
     // 유저 프로필 이미지 file id 가져오기
     const userSql = `
-        SELECT file_id FROM user_table WHERE user_id = ?;
+        SELECT file_id FROM user WHERE user_id = ?;
         `;
     const userResults = await dbConnect.query(
         userSql,
@@ -171,7 +171,7 @@ exports.getPost = async (requestData, response) => {
     // 유저 프로필 이미지 가져오기
     if (userResults && userResults.length > 0 && userResults[0].file_id) {
         const profileImageSql = `
-            SELECT file_path FROM file_table WHERE file_id = ? AND file_category = 1 AND user_id = ?;
+            SELECT path FROM file WHERE file_id = ? AND category = 1 AND user_id = ?;
             `;
         const profileImageResults = await dbConnect.query(
             profileImageSql,
@@ -180,7 +180,7 @@ exports.getPost = async (requestData, response) => {
         );
 
         if (profileImageResults && profileImageResults.length > 0) {
-            postResult.profileImage = profileImageResults[0].file_path;
+            postResult.profileImage = profileImageResults[0].path;
         }
     }
     return postResult;
@@ -192,8 +192,8 @@ exports.updatePost = async requestData => {
         requestData;
 
     const updatePostSql = `
-    UPDATE post_table
-    SET post_title = ?, post_content = ?
+    UPDATE post
+    SET title = ?, content = ?
     WHERE post_id = ? AND deleted_at IS NULL;
     `;
     const updatePostResults = await dbConnect.query(updatePostSql, [
@@ -206,7 +206,7 @@ exports.updatePost = async requestData => {
 
     if (attachFilePath === null) {
         const sql = `
-        UPDATE post_table
+        UPDATE post
         SET file_id = NULL
         WHERE post_id = ?;
         `;
@@ -215,8 +215,8 @@ exports.updatePost = async requestData => {
         // 파일 경로 존재 여부 확인
         const checkFilePathSql = `
         SELECT COUNT(*) AS existing
-        FROM file_table
-        WHERE file_path = ?;
+        FROM file
+        WHERE path = ?;
         `;
         const checkResults = await dbConnect.query(checkFilePathSql, [
             attachFilePath,
@@ -224,8 +224,8 @@ exports.updatePost = async requestData => {
         if (checkResults[0].existing === 0) {
             // 파일 경로가 존재하지 않으면 새로운 파일 정보 삽입
             const postFilePathSql = `
-            INSERT INTO file_table
-            (user_id, post_id, file_path, file_category)
+            INSERT INTO file
+            (user_id, post_id, path, category)
             VALUES (?, ?, ?, 2);
             `;
             const postFileResults = await dbConnect.query(postFilePathSql, [
@@ -236,7 +236,7 @@ exports.updatePost = async requestData => {
 
             // file_id 업데이트
             const updatePostFileSql = `
-            UPDATE post_table
+            UPDATE post
             SET file_id = ?
             WHERE post_id = ?;
             `;
@@ -255,7 +255,7 @@ exports.softDeletePost = async requestData => {
     const { postId } = requestData;
 
     const sql = `
-    UPDATE post_table
+    UPDATE post
     SET deleted_at = NOW()
     WHERE post_id = ? AND deleted_at IS NULL;
     `;

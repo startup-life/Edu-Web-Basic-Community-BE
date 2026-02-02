@@ -19,10 +19,10 @@ exports.getUser = async requestData => {
     const { userId } = requestData;
 
     const sql = `
-    SELECT user_table.*, COALESCE(file_table.file_path, NULL) AS file_path
-    FROM user_table
-    LEFT JOIN file_table ON user_table.file_id = file_table.file_id
-    WHERE user_table.user_id = ? AND user_table.deleted_at IS NULL;
+    SELECT user.*, COALESCE(file.path, NULL) AS path
+    FROM user
+    LEFT JOIN file ON user.file_id = file.file_id
+    WHERE user.user_id = ? AND user.deleted_at IS NULL;
     `;
     const userData = await dbConnect.query(sql, [userId]);
 
@@ -34,7 +34,7 @@ exports.getUser = async requestData => {
         userId: userData[0].user_id,
         email: userData[0].email,
         nickname: userData[0].nickname,
-        profileImageUrl: userData[0].file_path,
+        profileImageUrl: userData[0].path,
         created_at: userData[0].created_at,
         updated_at: userData[0].updated_at,
         deleted_at: userData[0].deleted_at,
@@ -47,7 +47,7 @@ exports.updateUser = async requestData => {
     const { userId, nickname, profileImageUrl } = requestData;
 
     const updateUserSql = `
-        UPDATE user_table
+        UPDATE user
         SET nickname = ?
         WHERE user_id = ? AND deleted_at IS NULL;
     `;
@@ -61,7 +61,7 @@ exports.updateUser = async requestData => {
     if (profileImageUrl === undefined) return updateUserResults;
     if (profileImageUrl === null) {
         const clearProfileSql = `
-        UPDATE user_table
+        UPDATE user
         SET file_id = NULL
         WHERE user_id = ? AND deleted_at IS NULL;
         `;
@@ -70,8 +70,8 @@ exports.updateUser = async requestData => {
     }
 
     const profileImageSql = `
-        INSERT INTO file_table
-        (user_id, file_path, file_category)
+        INSERT INTO file
+        (user_id, path, category)
         VALUES (?, ?, 1);
     `;
     const profileImageResults = await dbConnect.query(profileImageSql, [
@@ -83,7 +83,7 @@ exports.updateUser = async requestData => {
         return STATUS_MESSAGE.UPDATE_PROFILE_IMAGE_FAILED;
 
     const userProfileSql = `
-        UPDATE user_table
+        UPDATE user
         SET file_id = ?
         WHERE user_id = ? AND deleted_at IS NULL;
     `;
@@ -101,7 +101,7 @@ exports.changePassword = async requestData => {
     const { userId, password } = requestData;
 
     const sql = `
-    UPDATE user_table
+    UPDATE user
     SET password = ?
     WHERE user_id = ?;
     `;
@@ -115,12 +115,12 @@ exports.changePassword = async requestData => {
 // 회원탈퇴
 exports.softDeleteUser = async requestData => {
     const { userId } = requestData;
-    const selectSql = `SELECT * FROM user_table WHERE user_id = ? AND deleted_at IS NULL;`;
+    const selectSql = `SELECT * FROM user WHERE user_id = ? AND deleted_at IS NULL;`;
     const selectResults = await dbConnect.query(selectSql, [userId]);
 
     if (!selectResults.length) return null;
 
-    const updateSql = `UPDATE user_table SET deleted_at = now() WHERE user_id = ?;`;
+    const updateSql = `UPDATE user SET deleted_at = now() WHERE user_id = ?;`;
     await dbConnect.query(updateSql, [userId]);
 
     return selectResults[0];
