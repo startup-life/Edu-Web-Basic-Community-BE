@@ -9,6 +9,7 @@ const {
     saveSession,
     destroySession,
 } = require('../utils/session.util.js');
+const { pathToUrl, urlToPath } = require('../utils/url.util.js');
 
 const SALT_ROUNDS = 10;
 
@@ -25,12 +26,13 @@ exports.signupUser = async (request, response, next) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+        const normalizedProfileImageUrl = urlToPath(profileImageUrl);
 
         const requestData = {
             email,
             password: hashedPassword,
             nickname,
-            profileImageUrl: profileImageUrl || null,
+            profileImageUrl: normalizedProfileImageUrl || null,
         };
 
         await authModel.signUpUser(requestData);
@@ -62,9 +64,17 @@ exports.loginUser = async (request, response, next) => {
         request.session.profileImageUrl = responseData.profileImageUrl ?? null;
         await saveSession(request);
 
+        const responsePayload = {
+            ...responseData,
+            profileImageUrl: pathToUrl(
+                request,
+                responseData.profileImageUrl,
+            ),
+        };
+
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.LOGIN_SUCCESS,
-            data: responseData,
+            data: responsePayload,
         });
     } catch (error) {
         return next(error);
@@ -101,7 +111,7 @@ exports.checkAuth = async (request, response, next) => {
                 userId,
                 email,
                 nickname,
-                profileImageUrl,
+                profileImageUrl: pathToUrl(request, profileImageUrl),
             },
         });
     } catch (error) {

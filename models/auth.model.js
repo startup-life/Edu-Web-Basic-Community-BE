@@ -19,7 +19,7 @@ const {
 // 유저 추가
 const insertUser = async (email, password, nickname) => {
     const insertUserSql = `
-    INSERT INTO user (email, password, nickname)
+    INSERT INTO users (email, password, nickname)
     VALUES (?, ?, ?);
     `;
     const userResults = await dbConnect.query(insertUserSql, [
@@ -34,7 +34,7 @@ const insertUser = async (email, password, nickname) => {
 // 프로필 이미지 파일 추가
 const insertProfileFile = async (userId, profileImageUrl) => {
     const insertFileSql = `
-    INSERT INTO file (user_id, path, category)
+    INSERT INTO files (user_id, path, category)
     VALUES (?, ?, 1);
     `;
     const fileResults = await dbConnect.query(insertFileSql, [
@@ -48,9 +48,9 @@ const insertProfileFile = async (userId, profileImageUrl) => {
 // 유저 프로필 이미지 파일 ID 업데이트
 const updateUserProfileImageId = async (userId, profileImageId) => {
     const updateUserSql = `
-    UPDATE user
+    UPDATE users
     SET file_id = ?
-    WHERE user_id = ?;
+    WHERE id = ?;
     `;
     await dbConnect.query(updateUserSql, [profileImageId, userId]);
 };
@@ -101,17 +101,17 @@ exports.loginUser = async (requestData, response) => {
 
     const sql = `
     SELECT
-        user.user_id,
-        user.email,
-        user.nickname,
-        user.password,
-        COALESCE(file.path, NULL) AS profileImageUrl
-    FROM user
-    LEFT JOIN file
-        ON user.file_id = file.file_id
-        AND file.deleted_at IS NULL
-        AND file.category = 1
-    WHERE user.email = ? AND user.deleted_at IS NULL;
+        users.id AS user_id,
+        users.email,
+        users.nickname,
+        users.password,
+        COALESCE(files.path, NULL) AS profileImageUrl
+    FROM users
+    LEFT JOIN files
+        ON users.file_id = files.id
+        AND files.deleted_at IS NULL
+        AND files.category = 1
+    WHERE users.email = ? AND users.deleted_at IS NULL;
     `;
     const results = await dbConnect.query(sql, [email], response);
 

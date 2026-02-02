@@ -12,10 +12,20 @@ exports.getComments = async requestData => {
     const { postId } = requestData;
 
     const sql = `
-    SELECT ct.*, ut.file_id, COALESCE(ft.path, NULL) AS profileImage
-    FROM comment AS ct
-    LEFT JOIN user AS ut ON ct.user_id = ut.user_id
-    LEFT JOIN file AS ft ON ut.file_id = ft.file_id
+    SELECT
+        ct.id AS comment_id,
+        ct.content,
+        ct.post_id,
+        ct.user_id,
+        ct.nickname,
+        ct.created_at,
+        ct.updated_at,
+        ct.deleted_at,
+        ut.file_id,
+        COALESCE(ft.path, NULL) AS profileImage
+    FROM comments AS ct
+    LEFT JOIN users AS ut ON ct.user_id = ut.id
+    LEFT JOIN files AS ft ON ut.file_id = ft.id
     WHERE ct.post_id = ? AND ct.deleted_at IS NULL;
     `;
     const results = await dbConnect.query(sql, [postId]);
@@ -29,8 +39,8 @@ exports.writeComment = async requestData => {
     const { postId, userId, commentContent } = requestData;
 
     const nicknameSql = `
-        SELECT nickname FROM user
-        WHERE user_id = ? AND deleted_at IS NULL;
+        SELECT nickname FROM users
+        WHERE id = ? AND deleted_at IS NULL;
         `;
     const nicknameResults = await dbConnect.query(nicknameSql, [userId]);
 
@@ -39,15 +49,15 @@ exports.writeComment = async requestData => {
     const { nickname } = nicknameResults[0];
 
     const checkPostSql = `
-        SELECT * FROM post
-        WHERE post_id = ? AND deleted_at IS NULL;
+        SELECT * FROM posts
+        WHERE id = ? AND deleted_at IS NULL;
         `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
 
     if (!checkPostResults || checkPostResults.length === 0) return null;
 
     const sql = `
-        INSERT INTO comment
+        INSERT INTO comments
         (post_id, user_id, nickname, content)
         VALUES (?, ?, ?, ?);
         `;
@@ -61,9 +71,9 @@ exports.writeComment = async requestData => {
     if (!results) return 'insert_error';
 
     const commentsCountSql = `
-        UPDATE post
+        UPDATE posts
         SET comment_count = comment_count + 1
-        WHERE post_id = ?;
+        WHERE id = ?;
         `;
     await dbConnect.query(commentsCountSql, [postId]);
 
@@ -75,18 +85,18 @@ exports.updateComment = async requestData => {
     const { postId, commentId, userId, commentContent } = requestData;
 
     const checkPostSql = `
-        SELECT * FROM post
-        WHERE post_id = ? AND deleted_at IS NULL;
+        SELECT * FROM posts
+        WHERE id = ? AND deleted_at IS NULL;
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
 
     if (!checkPostResults || checkPostResults.length === 0) return null;
 
     const sql = `
-        UPDATE comment
+        UPDATE comments
         SET content = ?
         WHERE post_id = ? 
-        AND comment_id = ? 
+        AND id = ? 
         AND user_id = ?
         AND deleted_at IS NULL;
     `;
@@ -108,8 +118,8 @@ exports.softDeleteComment = async requestData => {
 
     // 게시물 존재 여부 확인
     const checkPostSql = `
-    SELECT * FROM post
-    WHERE post_id = ? AND deleted_at IS NULL;
+    SELECT * FROM posts
+    WHERE id = ? AND deleted_at IS NULL;
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
     if (!checkPostResults || checkPostResults.length === 0) {
@@ -118,8 +128,8 @@ exports.softDeleteComment = async requestData => {
 
     // userId가 댓글 작성자 userId와 일치하는지 확인
     const checkUserSql = `
-    SELECT * FROM comment
-    WHERE post_id = ? AND comment_id = ? AND user_id = ? AND deleted_at IS NULL;
+    SELECT * FROM comments
+    WHERE post_id = ? AND id = ? AND user_id = ? AND deleted_at IS NULL;
     `;
     const checkUserResults = await dbConnect.query(checkUserSql, [
         postId,
@@ -133,10 +143,10 @@ exports.softDeleteComment = async requestData => {
 
     // 댓글 소프트 삭제
     const sql = `
-    UPDATE comment
+    UPDATE comments
     SET deleted_at = now()
     WHERE post_id = ?
-    AND comment_id = ?
+    AND id = ?
     AND user_id = ?
     AND deleted_at IS NULL;
     `;
@@ -146,9 +156,9 @@ exports.softDeleteComment = async requestData => {
 
     // 댓글 수 감소
     const commentsCountSql = `
-    UPDATE post
+    UPDATE posts
     SET comment_count = comment_count - 1
-    WHERE post_id = ?;
+    WHERE id = ?;
     `;
     await dbConnect.query(commentsCountSql, [postId]);
 

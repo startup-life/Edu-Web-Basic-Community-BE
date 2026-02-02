@@ -8,6 +8,7 @@ const PASSWORD_REGEX =
 const NICKNAME_REGEX = /^[가-힣a-zA-Z0-9]{2,10}$/;
 
 const emailValidation = body('email')
+    .trim()
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
@@ -15,6 +16,7 @@ const emailValidation = body('email')
     .withMessage('INVALID_FORMAT');
 
 const passwordValidation = body('password')
+    .trim()
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
@@ -28,6 +30,7 @@ const passwordValidation = body('password')
     .withMessage('INVALID_FORMAT');
 
 const nicknameValidation = body('nickname')
+    .trim()
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
@@ -41,6 +44,7 @@ const nicknameValidation = body('nickname')
     .withMessage('INVALID_FORMAT');
 
 const profileImageUrlValidation = body('profileImageUrl')
+    .trim()
     .optional({ values: 'null' })
     .isString()
     .withMessage('INVALID_FORMAT');

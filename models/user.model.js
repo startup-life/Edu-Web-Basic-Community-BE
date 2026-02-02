@@ -9,36 +9,33 @@ const {
     isNicknameTaken,
 } = require('../utils/user-duplicate.util.js');
 
+// 닉네임 업데이트
 const updateNickname = async (userId, nickname) => {
     const sql = `
-        UPDATE user_table
+        UPDATE users
         SET nickname = ?
-        WHERE user_id = ? AND deleted_at IS NULL;
+        WHERE id = ? AND deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(sql, [nickname, userId]);
-
-    if (!results)
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_FOUND_USER,
-        );
-
-    return results;
+    await dbConnect.query(sql, [nickname, userId]);
+    return;
 };
 
+// 프로필 이미지 삭제
 const clearProfileImage = async userId => {
     const sql = `
-        UPDATE user_table
+        UPDATE users
         SET file_id = NULL
-        WHERE user_id = ? AND deleted_at IS NULL;
+        WHERE id = ? AND deleted_at IS NULL;
     `;
     await dbConnect.query(sql, [userId]);
+    return;
 };
 
+// 프로필 이미지 파일 추가
 const insertProfileImage = async (userId, profileImageUrl) => {
     const sql = `
-        INSERT INTO file_table
-        (user_id, file_path, file_category)
+        INSERT INTO files
+        (user_id, path, category)
         VALUES (?, ?, 1);
     `;
     const results = await dbConnect.query(sql, [userId, profileImageUrl]);
@@ -52,13 +49,15 @@ const insertProfileImage = async (userId, profileImageUrl) => {
     return results.insertId;
 };
 
+// 유저 프로필 이미지 파일 ID 업데이트
 const updateUserProfileImageId = async (userId, profileImageId) => {
     const sql = `
-        UPDATE user_table
+        UPDATE users
         SET file_id = ?
-        WHERE user_id = ? AND deleted_at IS NULL;
+        WHERE id = ? AND deleted_at IS NULL;
     `;
-    return dbConnect.query(sql, [profileImageId, userId]);
+    await dbConnect.query(sql, [profileImageId, userId]);
+    return;
 };
 
 /**
@@ -75,22 +74,15 @@ exports.getUser = async requestData => {
     const { userId } = requestData;
 
     const sql = `
-    SELECT user.*, COALESCE(file.path, NULL) AS path
-    FROM user
-    LEFT JOIN file ON user.file_id = file.file_id
-    WHERE user.user_id = ? AND user.deleted_at IS NULL;
+    SELECT users.*, COALESCE(files.path, NULL) AS path
+    FROM users
+    LEFT JOIN files ON users.file_id = files.id
+    WHERE users.id = ? AND users.deleted_at IS NULL;
     `;
     const userData = await dbConnect.query(sql, [userId]);
 
-    if (userData.length === 0) {
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_FOUND_USER,
-        );
-    }
-
     const results = {
-        userId: userData[0].user_id,
+        userId: userData[0].id,
         email: userData[0].email,
         nickname: userData[0].nickname,
         profileImageUrl: userData[0].path,
@@ -113,6 +105,7 @@ exports.updateUser = async requestData => {
 
     const profileImageId = await insertProfileImage(userId, profileImageUrl);
     await updateUserProfileImageId(userId, profileImageId);
+    return;
 };
 
 
@@ -121,23 +114,18 @@ exports.changePassword = async requestData => {
     const { userId, password } = requestData;
 
     const sql = `
-    UPDATE user
+    UPDATE users
     SET password = ?
-    WHERE user_id = ?;
+    WHERE id = ?;
     `;
-    const results = await dbConnect.query(sql, [password, userId]);
-
-    if (!results.affectedRows)
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_FOUND_USER,
-        );
+    await dbConnect.query(sql, [password, userId]);
+    return;
 };
 
 // 회원탈퇴
 exports.softDeleteUser = async requestData => {
     const { userId } = requestData;
-    const selectSql = `SELECT * FROM user WHERE user_id = ? AND deleted_at IS NULL;`;
+    const selectSql = `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL;`;
     const selectResults = await dbConnect.query(selectSql, [userId]);
 
     if (!selectResults.length)
@@ -146,8 +134,9 @@ exports.softDeleteUser = async requestData => {
             STATUS_MESSAGE.NOT_FOUND_USER,
         );
 
-    const updateSql = `UPDATE user SET deleted_at = now() WHERE user_id = ?;`;
+    const updateSql = `UPDATE users SET deleted_at = now() WHERE id = ?;`;
     await dbConnect.query(updateSql, [userId]);
+    return;
 };
 
 // 이메일 중복 체크
@@ -155,6 +144,7 @@ exports.checkEmail = async requestData => {
     const { email } = requestData;
 
     const taken = await isEmailTaken(email);
+
     if (!taken) return;
     throw createHttpError(
         STATUS_CODE.CONFLICT,

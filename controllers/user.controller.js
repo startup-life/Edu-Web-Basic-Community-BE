@@ -4,6 +4,7 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
+const { pathToUrl, urlToPath } = require('../utils/url.util.js');
 
 const SALT_ROUNDS = 10;
 
@@ -20,17 +21,17 @@ exports.getUser = async (request, response, next) => {
     const userId = request.userId;
 
     try {
-        if (!userId) {
-            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
-
         const responseData = await userModel.getUser({ userId });
 
         return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.GET_USER_SUCCESS,
-            data: responseData,
+            code: STATUS_MESSAGE.USER_RETRIEVED,
+            data: {
+                ...responseData,
+                profileImageUrl: pathToUrl(
+                    request,
+                    responseData.profileImageUrl,
+                ),
+            },
         });
     } catch (error) {
         return next(error);
@@ -43,26 +44,28 @@ exports.updateUser = async (request, response, next) => {
     const userId = request.userId;
 
     try {
-        if (!userId) {
-            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
+        const normalizedProfileImageUrl =
+            profileImageUrl === undefined
+                ? undefined
+                : urlToPath(profileImageUrl);
 
         const requestData = {
             userId,
             nickname,
-            profileImageUrl,
+            profileImageUrl: normalizedProfileImageUrl,
         };
         await userModel.updateUser(requestData);
 
-        if (profileImageUrl !== undefined) {
-            request.session.profileImageUrl = profileImageUrl ?? null;
+        if (normalizedProfileImageUrl !== undefined) {
+            request.session.profileImageUrl =
+                normalizedProfileImageUrl === null
+                    ? null
+                    : normalizedProfileImageUrl;
         }
         request.session.nickname = nickname;
 
         return response.status(STATUS_CODE.CREATED).json({
-            code: STATUS_MESSAGE.UPDATE_USER_DATA_SUCCESS,
+            code: STATUS_MESSAGE.USER_UPDATED,
             data: null,
         });
     } catch (error) {
@@ -76,12 +79,6 @@ exports.changePassword = async (request, response, next) => {
     const userId = request.userId;
 
     try {
-        if (!userId) {
-            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
-
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const requestData = {
@@ -91,7 +88,7 @@ exports.changePassword = async (request, response, next) => {
         await userModel.changePassword(requestData);
 
         return response.status(STATUS_CODE.CREATED).json({
-            code: STATUS_MESSAGE.CHANGE_USER_PASSWORD_SUCCESS,
+            code: STATUS_MESSAGE.USER_PASSWORD_UPDATED,
             data: null,
         });
     } catch (error) {
@@ -104,19 +101,13 @@ exports.softDeleteUser = async (request, response, next) => {
     const userId = request.userId;
 
     try {
-        if (!userId) {
-            const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
-            error.status = STATUS_CODE.UNAUTHORIZED;
-            throw error;
-        }
-
         const requestData = {
             userId,
         };
         await userModel.softDeleteUser(requestData);
 
         return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.DELETE_USER_DATA_SUCCESS,
+            code: STATUS_MESSAGE.USER_DELETED,
             data: null,
         });
     } catch (error) {
