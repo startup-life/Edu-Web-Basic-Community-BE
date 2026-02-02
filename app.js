@@ -91,7 +91,7 @@ app.use(limiter);
 app.use(helmet());
 
 // Routes
-app.use('/', route);
+app.use('/v1', route);
 
 // Error Handler
 app.use(errorHandler);
