@@ -28,12 +28,6 @@ exports.getUser = async (request, response, next) => {
 
         const responseData = await userModel.getUser({ userId });
 
-        if (responseData === null) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
-
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.GET_USER_SUCCESS,
             data: responseData,
@@ -60,19 +54,7 @@ exports.updateUser = async (request, response, next) => {
             nickname,
             profileImageUrl,
         };
-        const responseData = await userModel.updateUser(requestData);
-
-        if (responseData === null) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
-
-        if (responseData === STATUS_MESSAGE.UPDATE_PROFILE_IMAGE_FAILED) {
-            const error = new Error(STATUS_MESSAGE.UPDATE_PROFILE_IMAGE_FAILED);
-            error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
-            throw error;
-        }
+        await userModel.updateUser(requestData);
 
         if (profileImageUrl !== undefined) {
             request.session.profileImageUrl = profileImageUrl ?? null;
@@ -106,13 +88,7 @@ exports.changePassword = async (request, response, next) => {
             userId,
             password: hashedPassword,
         };
-        const responseData = await userModel.changePassword(requestData);
-
-        if (!responseData) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
+        await userModel.changePassword(requestData);
 
         return response.status(STATUS_CODE.CREATED).json({
             code: STATUS_MESSAGE.CHANGE_USER_PASSWORD_SUCCESS,
@@ -137,13 +113,7 @@ exports.softDeleteUser = async (request, response, next) => {
         const requestData = {
             userId,
         };
-        const responseData = await userModel.softDeleteUser(requestData);
-
-        if (responseData === null) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
+        await userModel.softDeleteUser(requestData);
 
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.DELETE_USER_DATA_SUCCESS,
@@ -161,18 +131,12 @@ exports.checkEmail = async (request, response, next) => {
     try {
         const requestData = { email };
 
-        const resData = await userModel.checkEmail(requestData);
+        await userModel.checkEmail(requestData);
 
-        if (resData === null) {
-            return response.status(STATUS_CODE.OK).json({
-                code: STATUS_MESSAGE.AVAILABLE_EMAIL,
-                data: null,
-            });
-        }
-
-        const error = new Error(STATUS_MESSAGE.ALREADY_EXIST_EMAIL);
-        error.status = STATUS_CODE.CONFLICT;
-        throw error;
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.AVAILABLE_EMAIL,
+            data: null,
+        });
     } catch (error) {
         return next(error);
     }
@@ -185,18 +149,12 @@ exports.checkNickname = async (request, response, next) => {
     try {
         const requestData = { nickname };
 
-        const responseData = await userModel.checkNickname(requestData);
+        await userModel.checkNickname(requestData);
 
-        if (!responseData) {
-            return response.status(STATUS_CODE.OK).json({
-                code: STATUS_MESSAGE.AVAILABLE_NICKNAME,
-                data: null,
-            });
-        }
-
-        const error = new Error(STATUS_MESSAGE.ALREADY_EXIST_NICKNAME);
-        error.status = STATUS_CODE.CONFLICT;
-        throw error;
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.AVAILABLE_NICKNAME,
+            data: null,
+        });
     } catch (error) {
         return next(error);
     }
