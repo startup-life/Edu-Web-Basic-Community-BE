@@ -17,22 +17,16 @@ const SALT_ROUNDS = 10;
 
 // 유저 정보 가져오기
 exports.getUser = async (request, response, next) => {
-    const { user_id: userId } = request.params;
+    const userId = request.userId;
 
     try {
-        if (
-            request.userId &&
-            parseInt(userId, 10) !== parseInt(request.userId, 10)
-        ) {
+        if (!userId) {
             const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
             error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
         }
 
-        const requestData = {
-            userId,
-        };
-        const responseData = await userModel.getUser(requestData);
+        const responseData = await userModel.getUser({ userId });
 
         if (responseData === null) {
             const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
@@ -51,14 +45,11 @@ exports.getUser = async (request, response, next) => {
 
 // 회원정보 수정
 exports.updateUser = async (request, response, next) => {
-    const { user_id: userId } = request.params;
     const { nickname, profileImageUrl } = request.body;
+    const userId = request.userId;
 
     try {
-        if (
-            request.userId &&
-            parseInt(userId, 10) !== parseInt(request.userId, 10)
-        ) {
+        if (!userId) {
             const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
             error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
@@ -99,14 +90,11 @@ exports.updateUser = async (request, response, next) => {
 
 // 비밀번호 변경
 exports.changePassword = async (request, response, next) => {
-    const { user_id: userId } = request.params;
     const { password } = request.body;
+    const userId = request.userId;
 
     try {
-        if (
-            request.userId &&
-            parseInt(userId, 10) !== parseInt(request.userId, 10)
-        ) {
+        if (!userId) {
             const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
             error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;
@@ -137,13 +125,10 @@ exports.changePassword = async (request, response, next) => {
 
 // 회원 탈퇴
 exports.softDeleteUser = async (request, response, next) => {
-    const { user_id: userId } = request.params;
+    const userId = request.userId;
 
     try {
-        if (
-            request.userId &&
-            parseInt(userId, 10) !== parseInt(request.userId, 10)
-        ) {
+        if (!userId) {
             const error = new Error(STATUS_MESSAGE.REQUIRED_AUTHORIZATION);
             error.status = STATUS_CODE.UNAUTHORIZED;
             throw error;

@@ -1,7 +1,7 @@
 const { STATUS_CODE, STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
-const isLoggedIn = async (req, res, next) => {
-    const userId = req.session && req.session.userId ? req.session.userId : null;
+const isLoggedIn = async (request, response, next) => {
+    const userId = request.session && request.session.userId ? request.session.userId : null;
 
     try {
         if (!userId) {
@@ -9,7 +9,7 @@ const isLoggedIn = async (req, res, next) => {
             error.status = STATUS_CODE.UNAUTHORIZED;
             return next(error);
         }
-        req.userId = userId;
+        request.userId = userId;
         return next();
     } catch (error) {
         return next(error);

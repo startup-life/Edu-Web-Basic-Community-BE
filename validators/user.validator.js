@@ -1,4 +1,4 @@
-const { param, query } = require('express-validator');
+const { query } = require('express-validator');
 const { handleValidation } = require('./index.js');
 const {
     emailValidation,
@@ -8,13 +8,6 @@ const {
     EMAIL_REGEX,
     NICKNAME_REGEX,
 } = require('./auth.validator.js');
-
-const userIdParamValidation = param('user_id')
-    .notEmpty()
-    .withMessage('REQUIRED')
-    .bail()
-    .isInt()
-    .withMessage('INVALID_FORMAT');
 
 const emailQueryValidation = query('email')
     .notEmpty()
@@ -36,29 +29,24 @@ const nicknameQueryValidation = query('nickname')
     .matches(NICKNAME_REGEX)
     .withMessage('INVALID_FORMAT');
 
-const getUserValidation = [userIdParamValidation, handleValidation];
-
 const updateUserValidation = [
-    userIdParamValidation,
     nicknameValidation,
     profileImageUrlValidation,
     handleValidation,
 ];
 
 const changePasswordValidation = [
-    userIdParamValidation,
     passwordValidation,
     handleValidation,
 ];
 
-const deleteUserValidation = [userIdParamValidation, handleValidation];
+const deleteUserValidation = [handleValidation];
 
 const checkEmailValidation = [emailQueryValidation, handleValidation];
 
 const checkNicknameValidation = [nicknameQueryValidation, handleValidation];
 
 module.exports = {
-    getUserValidation,
     updateUserValidation,
     changePasswordValidation,
     deleteUserValidation,

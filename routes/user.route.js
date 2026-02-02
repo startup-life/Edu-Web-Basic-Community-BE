@@ -2,7 +2,6 @@ const express = require('express');
 const userController = require('../controllers/user.controller.js');
 const isLoggedIn = require('../middleware/auth.middleware.js');
 const {
-    getUserValidation,
     updateUserValidation,
     changePasswordValidation,
     deleteUserValidation,
@@ -14,14 +13,14 @@ const { methodNotAllowed } = require('../middleware/method-not-allowed.middlewar
 const router = express.Router();
 
 router
-    .route('/users/:user_id')
-    .get(isLoggedIn, getUserValidation, userController.getUser)
+    .route('/users/me')
+    .get(isLoggedIn, userController.getUser)
     .put(isLoggedIn, updateUserValidation, userController.updateUser)
     .delete(isLoggedIn, deleteUserValidation, userController.softDeleteUser)
     .all(methodNotAllowed);
 
 router
-    .route('/users/:user_id/password')
+    .route('/users/me/password')
     .patch(isLoggedIn, changePasswordValidation, userController.changePassword)
     .all(methodNotAllowed);
 

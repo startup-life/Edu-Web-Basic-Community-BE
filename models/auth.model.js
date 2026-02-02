@@ -66,15 +66,15 @@ const updateUserProfileImageId = async (userId, profileImageId) => {
 exports.signUpUser = async requestData => {
     const { email, password, nickname, profileImageUrl } = requestData;
 
-    const emailExist = await isEmailTaken(email);
-    if (emailExist)
+    const emailTaken = await isEmailTaken(email);
+    if (emailTaken)
         throw createHttpError(
             STATUS_CODE.CONFLICT,
             STATUS_MESSAGE.ALREADY_EXIST_EMAIL,
         );
 
-    const nicknameExist = await isNicknameTaken(nickname);
-    if (nicknameExist)
+    const nicknameTaken = await isNicknameTaken(nickname);
+    if (nicknameTaken)
         throw createHttpError(
             STATUS_CODE.CONFLICT,
             STATUS_MESSAGE.ALREADY_EXIST_NICKNAME,
