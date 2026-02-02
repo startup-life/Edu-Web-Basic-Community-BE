@@ -1,112 +1,14 @@
-const bcrypt = require('bcrypt');
 const dbConnect = require('../databases/index.js');
 const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
 /**
- * 로그인
- * 회원가입
  * 유저 정보 불러오기
  * 회원정보 수정
  * 비밀번호 변경
  * 회원 탈퇴
  * 이메일 중복 체크
  * 닉네임 중복 체크
- * 유저 세션 정보 업데이트
- * 유저 세션 정보 삭제
  */
-
-
-// 로그인
-exports.loginUser = async (requestData, response) => {
-    const { email, password } = requestData;
-
-    const sql = `SELECT * FROM user_table WHERE email = ? AND deleted_at IS NULL;`;
-    const results = await dbConnect.query(sql, [email], response);
-
-    if (!results[0] || results[0] === 'undefined' || results[0] === undefined)
-        return null;
-
-    const match = await bcrypt.compare(password, results[0].password);
-    if (!match) return null;
-
-    let profileImageUrl = null;
-    if (results[0].file_id !== null) {
-        const profileSql = `SELECT file_path FROM file_table WHERE file_id = ? AND deleted_at IS NULL AND file_category = 1;`;
-        const profileResults = await dbConnect.query(
-            profileSql,
-            [results[0].file_id],
-            response,
-        );
-        if (profileResults && profileResults[0]) {
-            profileImageUrl = profileResults[0].file_path;
-        }
-    }
-
-    const user = {
-        userId: results[0].user_id,
-        email: results[0].email,
-        nickname: results[0].nickname,
-        profileImageUrl,
-        created_at: results[0].created_at,
-        updated_at: results[0].updated_at,
-        deleted_at: results[0].deleted_at,
-    };
-
-    return user;
-};
-
-// 회원가입
-exports.signUpUser = async requestData => {
-    const { email, password, nickname, profileImageUrl } = requestData;
-
-    const checkEmailSql = `SELECT email FROM user_table WHERE email = ?;`;
-    const checkEmailResults = await dbConnect.query(checkEmailSql, [email]);
-
-    if (checkEmailResults.length !== 0) return 'already_exist_email';
-
-    const insertUserSql = `
-    INSERT INTO user_table (email, password, nickname)
-    VALUES (?, ?, ?);
-    `;
-    const userResults = await dbConnect.query(insertUserSql, [
-        email,
-        password,
-        nickname,
-    ]);
-
-    if (!userResults.insertId) return null;
-
-    let profileImageId = null;
-    if (profileImageUrl) {
-        const insertFileSql = `
-        INSERT INTO file_table (user_id, file_path, file_category)
-        VALUES (?, ?, 1);
-        `;
-        const fileResults = await dbConnect.query(insertFileSql, [
-            userResults.insertId,
-            profileImageUrl,
-        ]);
-
-        if (fileResults.insertId) {
-            profileImageId = fileResults.insertId;
-
-            const updateUserSql = `
-            UPDATE user_table
-            SET file_id = ?
-            WHERE user_id = ?;
-            `;
-            await dbConnect.query(updateUserSql, [
-                profileImageId,
-                userResults.insertId,
-            ]);
-        }
-    }
-
-    return {
-        userId: userResults.insertId,
-        profileImageId: profileImageId,
-    };
-};
 
 // 유저 정보 불러오기
 exports.getUser = async requestData => {
@@ -189,26 +91,6 @@ exports.updateUser = async requestData => {
     return userProfileResults;
 };
 
-// 유저 기본 정보 불러오기 (세션 기반 체크용)
-exports.getUserSummary = async requestData => {
-    const { userId } = requestData;
-
-    const sql = `
-    SELECT user_id, email, nickname
-    FROM user_table
-    WHERE user_id = ? AND deleted_at IS NULL;
-    `;
-    const userData = await dbConnect.query(sql, [userId]);
-
-    if (!userData || userData.length === 0) return null;
-
-    return {
-        userId: userData[0].user_id,
-        email: userData[0].email,
-        nickname: userData[0].nickname,
-        profileImageUrl: null,
-    };
-};
 
 // 비밀번호 변경
 exports.changePassword = async requestData => {

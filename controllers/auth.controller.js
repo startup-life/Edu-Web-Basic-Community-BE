@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const authModel = require('../models/auth.model.js');
 const userModel = require('../models/user.model.js');
 const {
     STATUS_CODE,
@@ -8,11 +9,48 @@ const {
 const SALT_ROUNDS = 10;
 
 /**
- * 로그인
  * 회원가입
+ * 로그인
  * 로그인 상태 체크
  * 로그아웃
  */
+
+// 회원가입
+exports.signupUser = async (request, response, next) => {
+    const { email, password, nickname, profileImageUrl } = request.body;
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+        const requestData = {
+            email,
+            password: hashedPassword,
+            nickname,
+            profileImageUrl: profileImageUrl || null,
+        };
+
+        const responseData = await authModel.signUpUser(requestData);
+
+        if (responseData === STATUS_MESSAGE.ALREADY_EXIST_EMAIL) {
+            const error = new Error(STATUS_MESSAGE.ALREADY_EXIST_EMAIL);
+            error.status = STATUS_CODE.CONFLICT;
+            throw error;
+        }
+
+        if (responseData === null) {
+            const error = new Error(STATUS_MESSAGE.SIGNUP_FAILED);
+            error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
+            throw error;
+        }
+
+        return response.status(STATUS_CODE.CREATED).json({
+            code: STATUS_MESSAGE.SIGNUP_SUCCESS,
+            data: null,
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
 
 // 로그인
 exports.loginUser = async (request, response, next) => {
@@ -23,7 +61,7 @@ exports.loginUser = async (request, response, next) => {
             email,
             password,
         };
-        const responseData = await userModel.loginUser(requestData, response);
+        const responseData = await authModel.loginUser(requestData, response);
 
         if (!responseData || responseData === null) {
             const error = new Error(STATUS_MESSAGE.INVALID_EMAIL_OR_PASSWORD);
@@ -51,43 +89,6 @@ exports.loginUser = async (request, response, next) => {
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.LOGIN_SUCCESS,
             data: responseData,
-        });
-    } catch (error) {
-        return next(error);
-    }
-};
-
-// 회원가입
-exports.signupUser = async (request, response, next) => {
-    const { email, password, nickname, profileImageUrl } = request.body;
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-        const reqSignupData = {
-            email,
-            password: hashedPassword,
-            nickname,
-            profileImageUrl: profileImageUrl || null,
-        };
-
-        const resSignupData = await userModel.signUpUser(reqSignupData);
-
-        if (resSignupData === 'already_exist_email') {
-            const error = new Error(STATUS_MESSAGE.ALREADY_EXIST_EMAIL);
-            error.status = STATUS_CODE.CONFLICT;
-            throw error;
-        }
-
-        if (resSignupData === null) {
-            const error = new Error(STATUS_MESSAGE.SIGNUP_FAILED);
-            error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
-            throw error;
-        }
-
-        return response.status(STATUS_CODE.CREATED).json({
-            code: STATUS_MESSAGE.SIGNUP_SUCCESS,
-            data: resSignupData,
         });
     } catch (error) {
         return next(error);
@@ -123,7 +124,7 @@ exports.checkAuth = async (request, response, next) => {
 
         if (!email || !nickname || !hasSessionProfile) {
             const userData = hasSessionProfile
-                ? await userModel.getUserSummary(requestData)
+                ? await authModel.getUserSummary(requestData)
                 : await userModel.getUser(requestData);
 
             if (!userData) {
