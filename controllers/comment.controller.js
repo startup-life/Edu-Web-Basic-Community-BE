@@ -73,6 +73,7 @@ exports.writeComment = async (request, response, next) => {
 exports.updateComment = async (request, response, next) => {
     const { postId, commentId } = request.params;
     const userId = request.userId;
+    const nickname = request.session && request.session.nickname;
     const { commentContent } = request.body;
 
     try {
@@ -80,6 +81,7 @@ exports.updateComment = async (request, response, next) => {
             postId,
             commentId,
             userId,
+            nickname,
             commentContent,
         };
         await commentModel.updateComment(requestData);

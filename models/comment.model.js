@@ -82,7 +82,7 @@ exports.writeComment = async requestData => {
 
 // 댓글 수정
 exports.updateComment = async requestData => {
-    const { postId, commentId, userId, commentContent } = requestData;
+    const { postId, commentId, userId, nickname, commentContent } = requestData;
 
     const checkPostSql = `
         SELECT * FROM posts
@@ -96,28 +96,53 @@ exports.updateComment = async requestData => {
             STATUS_MESSAGE.POST_NOT_FOUND,
         );
 
-    const sql = `
+    const checkCommentSql = `
+        SELECT id, user_id
+        FROM comments
+        WHERE post_id = ?
+        AND id = ?
+        AND deleted_at IS NULL;
+    `;
+    const checkCommentResults = await dbConnect.query(checkCommentSql, [
+        postId,
+        commentId,
+    ]);
+
+    if (!checkCommentResults || checkCommentResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.COMMENT_NOT_FOUND,
+        );
+
+    if (`${checkCommentResults[0].user_id}` !== `${userId}`)
+        throw createHttpError(
+            STATUS_CODE.FORBIDDEN,
+            STATUS_MESSAGE.FORBIDDEN,
+        );
+
+    const updateCommentSql = `
         UPDATE comments
-        SET content = ?
+        SET content = ?, nickname = ?
         WHERE post_id = ? 
         AND id = ? 
         AND user_id = ?
         AND deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(sql, [
+    const results = await dbConnect.query(updateCommentSql, [
         commentContent,
+        nickname,
         postId,
         commentId,
         userId,
     ]);
 
-    if (!results || results.affectedRows === 0)
+    if (!results)
         throw createHttpError(
             STATUS_CODE.INTERNAL_SERVER_ERROR,
             STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
         );
 
-    return results;
+    return;
 };
 
 // 댓글 삭제
