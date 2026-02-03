@@ -48,6 +48,42 @@ exports.getPosts = async (request, response, next) => {
     }
 };
 
+// 게시글 검색
+exports.searchPosts = async (request, response, next) => {
+    const { keyword, offset, limit } = request.query;
+
+    try {
+        const requestData = {
+            keyword,
+            offset: Number.parseInt(offset, 10),
+            limit: Number.parseInt(limit, 10),
+        };
+        const responseData = await postModel.searchPosts(requestData);
+
+        const posts = responseData.map(post => ({
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            likeCount: post.like_count,
+            commentCount: post.comment_count,
+            viewCount: post.view_count,
+            author: {
+                userId: post.user_id,
+                nickname: post.nickname,
+                profileImageUrl: pathToUrl(request, post.profileImageUrl),
+            },
+            createdAt: post.created_at,
+        }));
+
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.POSTS_RETRIEVED,
+            data: posts,
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 // 게시글 상세 조회
 exports.getPost = async (request, response, next) => {
     const { postId } = request.params;

@@ -168,6 +168,64 @@ exports.getPosts = async (requestData, response) => {
     return results;
 };
 
+// 게시글 검색
+exports.searchPosts = async requestData => {
+    const { keyword, offset, limit } = requestData;
+    const keywordLike = `%${keyword}%`;
+    const parsedOffset = Number.parseInt(offset, 10);
+    const parsedLimit = Number.parseInt(limit, 10);
+    const safeOffset = Number.isNaN(parsedOffset) ? 0 : Math.max(0, parsedOffset);
+    const safeLimit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, parsedLimit);
+
+    const sql = `
+    SELECT
+        posts.id,
+        posts.title,
+        posts.content,
+        posts.file_id,
+        posts.user_id,
+        posts.nickname,
+        posts.created_at,
+        posts.updated_at,
+        posts.deleted_at,
+        CASE
+            WHEN posts.like_count >= 1000000 THEN CONCAT(ROUND(posts.like_count / 1000000, 1), 'M')
+            WHEN posts.like_count >= 1000 THEN CONCAT(ROUND(posts.like_count / 1000, 1), 'K')
+            ELSE CAST(posts.like_count AS CHAR)
+        END as like_count,
+        CASE
+            WHEN posts.comment_count >= 1000000 THEN CONCAT(ROUND(posts.comment_count / 1000000, 1), 'M')
+            WHEN posts.comment_count >= 1000 THEN CONCAT(ROUND(posts.comment_count / 1000, 1), 'K')
+            ELSE CAST(posts.comment_count AS CHAR)
+        END as comment_count,
+        CASE
+            WHEN posts.view_count >= 1000000 THEN CONCAT(ROUND(posts.view_count / 1000000, 1), 'M')
+            WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
+            ELSE CAST(posts.view_count AS CHAR)
+        END as view_count,
+        COALESCE(files.path, NULL) AS profileImageUrl
+    FROM posts
+            LEFT JOIN users ON posts.user_id = users.id
+            LEFT JOIN files ON users.file_id = files.id
+    WHERE posts.deleted_at IS NULL
+        AND (
+            posts.title LIKE ?
+            OR posts.content LIKE ?
+            OR posts.nickname LIKE ?
+        )
+    ORDER BY posts.created_at DESC
+    LIMIT ${safeLimit} OFFSET ${safeOffset};
+    `;
+    const results = await dbConnect.query(sql, [
+        keywordLike,
+        keywordLike,
+        keywordLike,
+    ]);
+
+    if (!results) return null;
+    return results;
+};
+
 // 게시글 좋아요 증가
 exports.likePost = async requestData => {
     const { postId, userId } = requestData;

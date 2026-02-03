@@ -8,6 +8,7 @@ const {
     updatePostValidation,
     deletePostValidation,
     likePostValidation,
+    searchPostsValidation,
 } = require('../validators/post.validator.js');
 const { methodNotAllowed } = require('../middleware/method-not-allowed.middleware.js');
 
@@ -17,6 +18,11 @@ router
     .route('/posts')
     .get(isLoggedIn, getPostsValidation, postController.getPosts)
     .post(isLoggedIn, writePostValidation, postController.writePost)
+    .all(methodNotAllowed);
+
+router
+    .route('/posts/search')
+    .get(isLoggedIn, searchPostsValidation, postController.searchPosts)
     .all(methodNotAllowed);
 
 router
