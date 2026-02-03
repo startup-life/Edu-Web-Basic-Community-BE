@@ -51,10 +51,12 @@ exports.getPosts = async (request, response, next) => {
 // 게시글 상세 조회
 exports.getPost = async (request, response, next) => {
     const { postId } = request.params;
+    const userId = request.userId;
 
     try {
         const requestData = {
             postId,
+            userId,
         };
         const responseData = await postModel.getPost(requestData, response);
 
@@ -73,6 +75,7 @@ exports.getPost = async (request, response, next) => {
             nickname: responseData.nickname,
             createdAt: responseData.created_at,
             likeCount: responseData.like_count,
+            isLiked: Boolean(responseData.is_liked),
             commentCount: responseData.comment_count,
             viewCount: responseData.view_count,
             filePath: pathToUrl(request, responseData.filePath),
@@ -165,6 +168,42 @@ exports.softDeletePost = async (request, response, next) => {
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.DELETE_POST_SUCCESS,
             data: null,
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+// 게시글 좋아요 증가
+exports.likePost = async (request, response, next) => {
+    const { postId } = request.params;
+    const userId = request.userId;
+
+    try {
+        const requestData = { postId, userId };
+        const likeCount = await postModel.likePost(requestData);
+
+        return response.status(STATUS_CODE.CREATED).json({
+            code: STATUS_MESSAGE.POST_LIKE_CREATED,
+            data: { likeCount },
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+// 게시글 좋아요 감소
+exports.unlikePost = async (request, response, next) => {
+    const { postId } = request.params;
+    const userId = request.userId;
+
+    try {
+        const requestData = { postId, userId };
+        const likeCount = await postModel.unlikePost(requestData);
+
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.POST_LIKE_DELETED,
+            data: { likeCount },
         });
     } catch (error) {
         return next(error);

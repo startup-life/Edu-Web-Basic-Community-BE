@@ -50,6 +50,7 @@ const updatePostValidation = [
 ];
 
 const deletePostValidation = [postIdParamValidation, handleValidation];
+const likePostValidation = [postIdParamValidation, handleValidation];
 
 module.exports = {
     getPostsValidation,
@@ -57,5 +58,6 @@ module.exports = {
     writePostValidation,
     updatePostValidation,
     deletePostValidation,
+    likePostValidation,
     postIdParamValidation,
 };
