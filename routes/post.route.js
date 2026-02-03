@@ -7,6 +7,8 @@ const {
     writePostValidation,
     updatePostValidation,
     deletePostValidation,
+    likePostValidation,
+    searchPostsValidation,
 } = require('../validators/post.validator.js');
 const { methodNotAllowed } = require('../middleware/method-not-allowed.middleware.js');
 
@@ -19,10 +21,21 @@ router
     .all(methodNotAllowed);
 
 router
+    .route('/posts/search')
+    .get(isLoggedIn, searchPostsValidation, postController.searchPosts)
+    .all(methodNotAllowed);
+
+router
     .route('/posts/:postId')
     .get(isLoggedIn, getPostValidation, postController.getPost)
     .patch(isLoggedIn, updatePostValidation, postController.updatePost)
     .delete(isLoggedIn, deletePostValidation, postController.softDeletePost)
+    .all(methodNotAllowed);
+
+router
+    .route('/posts/:postId/likes')
+    .post(isLoggedIn, likePostValidation, postController.likePost)
+    .delete(isLoggedIn, likePostValidation, postController.unlikePost)
     .all(methodNotAllowed);
 
 module.exports = router;

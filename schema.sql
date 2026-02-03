@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS posts
     `deleted_at`     TIMESTAMP       NULL                                   COMMENT '삭제한 때',
     PRIMARY KEY (id)
 );
+CREATE TABLE IF NOT EXISTS post_likes
+(
+    `id`          INT UNSIGNED    NOT NULL    AUTO_INCREMENT            COMMENT '좋아요 인덱스',
+    `post_id`     INT UNSIGNED    NOT NULL                              COMMENT '게시글 인덱스',
+    `user_id`     INT UNSIGNED    NOT NULL                              COMMENT '유저 인덱스',
+    `created_at`  TIMESTAMP       NULL        DEFAULT CURRENT_TIMESTAMP COMMENT '생성한 때',
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_post_likes_post_user (post_id, user_id)
+);
 CREATE TABLE IF NOT EXISTS files
 (
     `id`                INT UNSIGNED    NOT NULL    AUTO_INCREMENT              COMMENT '파일 인덱스',

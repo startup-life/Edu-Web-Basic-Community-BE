@@ -36,6 +36,17 @@ const limitValidation = query('limit')
     .isInt()
     .withMessage('INVALID_FORMAT');
 
+const keywordValidation = query('keyword')
+    .trim()
+    .notEmpty()
+    .withMessage('REQUIRED')
+    .bail()
+    .isLength({ min: 2 })
+    .withMessage('TOO_SHORT')
+    .bail()
+    .isString()
+    .withMessage('INVALID_FORMAT');
+
 const getPostsValidation = [offsetValidation, limitValidation, handleValidation];
 
 const getPostValidation = [postIdParamValidation, handleValidation];
@@ -50,6 +61,13 @@ const updatePostValidation = [
 ];
 
 const deletePostValidation = [postIdParamValidation, handleValidation];
+const likePostValidation = [postIdParamValidation, handleValidation];
+const searchPostsValidation = [
+    keywordValidation,
+    offsetValidation,
+    limitValidation,
+    handleValidation,
+];
 
 module.exports = {
     getPostsValidation,
@@ -57,5 +75,7 @@ module.exports = {
     writePostValidation,
     updatePostValidation,
     deletePostValidation,
+    likePostValidation,
+    searchPostsValidation,
     postIdParamValidation,
 };
