@@ -87,7 +87,7 @@ exports.updateComment = async (request, response, next) => {
         await commentModel.updateComment(requestData);
 
         return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.UPDATE_COMMENT_SUCCESS,
+            code: STATUS_MESSAGE.COMMENT_UPDATED,
             data: null,
         });
     } catch (error) {
@@ -109,7 +109,7 @@ exports.softDeleteComment = async (request, response, next) => {
         await commentModel.softDeleteComment(requestData);
 
         return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.DELETE_COMMENT_SUCCESS,
+            code: STATUS_MESSAGE.COMMENT_DELETED,
             data: null,
         });
     } catch (error) {

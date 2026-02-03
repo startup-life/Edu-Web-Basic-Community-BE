@@ -161,25 +161,31 @@ exports.softDeleteComment = async requestData => {
             STATUS_MESSAGE.POST_NOT_FOUND,
         );
 
-    // userId가 댓글 작성자 userId와 일치하는지 확인
-    const checkUserSql = `
-    SELECT * FROM comments
-    WHERE post_id = ? AND id = ? AND user_id = ? AND deleted_at IS NULL;
+    // 댓글 존재 여부 확인
+    const checkCommentSql = `
+    SELECT id, user_id
+    FROM comments
+    WHERE post_id = ? AND id = ? AND deleted_at IS NULL;
     `;
-    const checkUserResults = await dbConnect.query(checkUserSql, [
+    const checkCommentResults = await dbConnect.query(checkCommentSql, [
         postId,
         commentId,
-        userId,
     ]);
 
-    if (!checkUserResults || checkUserResults.length === 0)
+    if (!checkCommentResults || checkCommentResults.length === 0)
         throw createHttpError(
-            STATUS_CODE.UNAUTHORIZED,
-            STATUS_MESSAGE.REQUIRED_AUTHORIZATION,
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.COMMENT_NOT_FOUND,
+        );
+
+    if (`${checkCommentResults[0].user_id}` !== `${userId}`)
+        throw createHttpError(
+            STATUS_CODE.FORBIDDEN,
+            STATUS_MESSAGE.FORBIDDEN,
         );
 
     // 댓글 소프트 삭제
-    const sql = `
+    const deleteCommentSql = `
     UPDATE comments
     SET deleted_at = now()
     WHERE post_id = ?
@@ -187,7 +193,11 @@ exports.softDeleteComment = async requestData => {
     AND user_id = ?
     AND deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(sql, [postId, commentId, userId]);
+    const results = await dbConnect.query(deleteCommentSql, [
+        postId,
+        commentId,
+        userId,
+    ]);
 
     if (!results || results.affectedRows === 0)
         throw createHttpError(
