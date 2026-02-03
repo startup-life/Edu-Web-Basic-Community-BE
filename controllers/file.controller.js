@@ -9,14 +9,14 @@ exports.uploadFile = (request, response, next) => {
         if (!request.file) {
             const error = new Error(STATUS_MESSAGE.INVALID_INPUT);
             error.status = STATUS_CODE.UNPROCESSABLE_ENTITY;
-            error.data = { file: ['REQUIRED'] };
+            error.data = { profileImage: ['REQUIRED'] };
             throw error;
         }
 
         const profileImagePath = `/public/image/profile/${request.file.filename}`;
 
         response.status(STATUS_CODE.CREATED).send({
-            code: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
+            code: STATUS_MESSAGE.PROFILE_IMAGE_UPLOADED,
             data: {
                 profileImageUrl: pathToUrl(request, profileImagePath),
             },
@@ -31,7 +31,7 @@ exports.uploadPostFile = (request, response, next) => {
         if (!request.file) {
             const error = new Error(STATUS_MESSAGE.INVALID_INPUT);
             error.status = STATUS_CODE.UNPROCESSABLE_ENTITY;
-            error.data = { file: ['REQUIRED'] };
+            error.data = { postFile: ['REQUIRED'] };
             throw error;
         }
 
