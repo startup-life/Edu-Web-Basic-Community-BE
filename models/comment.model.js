@@ -38,21 +38,7 @@ exports.getComments = async requestData => {
 
 // 댓글 작성
 exports.writeComment = async requestData => {
-    const { postId, userId, commentContent } = requestData;
-
-    const nicknameSql = `
-        SELECT nickname FROM users
-        WHERE id = ? AND deleted_at IS NULL;
-        `;
-    const nicknameResults = await dbConnect.query(nicknameSql, [userId]);
-
-    if (!nicknameResults || nicknameResults.length === 0)
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_FOUND_USER,
-        );
-
-    const { nickname } = nicknameResults[0];
+    const { postId, userId, nickname, commentContent } = requestData;
 
     const checkPostSql = `
         SELECT * FROM posts
@@ -63,15 +49,15 @@ exports.writeComment = async requestData => {
     if (!checkPostResults || checkPostResults.length === 0)
         throw createHttpError(
             STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+            STATUS_MESSAGE.POST_NOT_FOUND,
         );
 
-    const sql = `
+    const insertCommentSql = `
         INSERT INTO comments
         (post_id, user_id, nickname, content)
         VALUES (?, ?, ?, ?);
         `;
-    const results = await dbConnect.query(sql, [
+    const results = await dbConnect.query(insertCommentSql, [
         postId,
         userId,
         nickname,
@@ -107,7 +93,7 @@ exports.updateComment = async requestData => {
     if (!checkPostResults || checkPostResults.length === 0)
         throw createHttpError(
             STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+            STATUS_MESSAGE.POST_NOT_FOUND,
         );
 
     const sql = `
@@ -147,7 +133,7 @@ exports.softDeleteComment = async requestData => {
     if (!checkPostResults || checkPostResults.length === 0)
         throw createHttpError(
             STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+            STATUS_MESSAGE.POST_NOT_FOUND,
         );
 
     // userId가 댓글 작성자 userId와 일치하는지 확인

@@ -47,12 +47,14 @@ exports.getComments = async (request, response, next) => {
 exports.writeComment = async (request, response, next) => {
     const { postId } = request.params;
     const userId = request.userId;
+    const nickname = request.session && request.session.nickname;
     const { commentContent } = request.body;
 
     try {
         const requestData = {
             postId,
             userId,
+            nickname,
             commentContent,
         };
 
