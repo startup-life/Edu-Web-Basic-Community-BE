@@ -2,6 +2,7 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
+const { pathToUrl } = require('../utils/url.util.js');
 
 exports.uploadFile = (request, response, next) => {
     try {
@@ -12,10 +13,12 @@ exports.uploadFile = (request, response, next) => {
             throw error;
         }
 
+        const profileImagePath = `/public/image/profile/${request.file.filename}`;
+
         response.status(STATUS_CODE.CREATED).send({
             code: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
             data: {
-                profileImageUrl: `/public/image/profile/${request.file.filename}`,
+                profileImageUrl: pathToUrl(request, profileImagePath),
             },
         });
     } catch (error) {
@@ -32,10 +35,12 @@ exports.uploadPostFile = (request, response, next) => {
             throw error;
         }
 
+        const filePath = `/public/image/post/${request.file.filename}`;
+
         response.status(STATUS_CODE.CREATED).send({
             code: STATUS_MESSAGE.FILE_UPLOAD_SUCCESS,
             data: {
-                filePath: `/public/image/post/${request.file.filename}`,
+                fileUrl: pathToUrl(request, filePath),
             },
         });
     } catch (error) {

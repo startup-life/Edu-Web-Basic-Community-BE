@@ -3,7 +3,7 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
-const { pathToUrl } = require('../utils/url.util.js');
+const { pathToUrl, urlToPath } = require('../utils/url.util.js');
 
 /**
  * 게시글 작성
@@ -64,9 +64,15 @@ exports.getPost = async (request, response, next) => {
             throw error;
         }
 
+        const postData = {
+            ...responseData,
+            filePath: pathToUrl(request, responseData.filePath),
+            profileImage: pathToUrl(request, responseData.profileImage),
+        };
+
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.POST_RETRIEVED,
-            data: responseData,
+            data: postData,
         });
     } catch (error) {
         return next(error);
@@ -77,32 +83,29 @@ exports.getPost = async (request, response, next) => {
 exports.writePost = async (request, response, next) => {
     const userId = request.userId;
     const nickname = request.session && request.session.nickname;
-    const { title, content, attachFilePath } = request.body;
+    const { title, content, attachFileUrl } = request.body;
 
     try {
+        const normalizedAttachFilePath =
+            attachFileUrl === undefined
+                ? undefined
+                : urlToPath(attachFileUrl) || null;
+
         const requestData = {
             userId,
             nickname,
             title,
             content,
-            attachFilePath: attachFilePath || null,
+            attachFileUrl: normalizedAttachFilePath,
         };
         const responseData = await postModel.writePost(requestData);
 
-        if (responseData === STATUS_MESSAGE.NOT_FOUND_USER) {
-            const error = new Error(STATUS_MESSAGE.NOT_FOUND_USER);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
-
-        if (!responseData) {
-            const error = new Error(STATUS_MESSAGE.WRITE_POST_FAILED);
-            error.status = STATUS_CODE.INTERNAL_SERVER_ERROR;
-            throw error;
+        if (responseData && responseData.fileUrl) {
+            responseData.fileUrl = pathToUrl(request, responseData.fileUrl);
         }
 
         return response.status(STATUS_CODE.CREATED).json({
-            code: STATUS_MESSAGE.WRITE_POST_SUCCESS,
+            code: STATUS_MESSAGE.POST_CREATED,
             data: responseData,
         });
     } catch (error) {
@@ -114,27 +117,26 @@ exports.writePost = async (request, response, next) => {
 exports.updatePost = async (request, response, next) => {
     const { post_id: postId } = request.params;
     const userId = request.userId;
-    const { title, content, attachFilePath } = request.body;
+    const { title, content, attachFileUrl } = request.body;
 
     try {
+        const normalizedAttachFilePath =
+            attachFileUrl === undefined
+                ? undefined
+                : urlToPath(attachFileUrl) || null;
+
         const requestData = {
             postId,
             userId,
             title,
             content,
-            attachFilePath: attachFilePath || null,
+            attachFileUrl: normalizedAttachFilePath,
         };
-        const responseData = await postModel.updatePost(requestData);
-
-        if (!responseData) {
-            const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
+        await postModel.updatePost(requestData);
 
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.UPDATE_POST_SUCCESS,
-            data: responseData,
+            data: null,
         });
     } catch (error) {
         next(error);

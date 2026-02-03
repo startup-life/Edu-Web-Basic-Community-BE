@@ -9,6 +9,21 @@ const {
     isNicknameTaken,
 } = require('../utils/user-duplicate.util.js');
 
+// 유저 존재 여부 확인
+const ensureUserExists = async userId => {
+    const sql = `
+        SELECT id
+        FROM users
+        WHERE id = ? AND deleted_at IS NULL;
+    `;
+    const results = await dbConnect.query(sql, [userId]);
+    if (!results || results.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_FOUND_USER,
+        );
+};
+
 // 닉네임 업데이트
 const updateNickname = async (userId, nickname) => {
     const sql = `
@@ -16,7 +31,13 @@ const updateNickname = async (userId, nickname) => {
         SET nickname = ?
         WHERE id = ? AND deleted_at IS NULL;
     `;
-    await dbConnect.query(sql, [nickname, userId]);
+    const results = await dbConnect.query(sql, [nickname, userId]);
+    if (!results)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
+    if (results.affectedRows === 0) await ensureUserExists(userId);
     return;
 };
 
@@ -80,6 +101,11 @@ exports.getUser = async requestData => {
     WHERE users.id = ? AND users.deleted_at IS NULL;
     `;
     const userData = await dbConnect.query(sql, [userId]);
+    if (!userData || userData.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_FOUND_USER,
+        );
 
     const results = {
         userId: userData[0].id,
@@ -118,7 +144,13 @@ exports.changePassword = async requestData => {
     SET password = ?
     WHERE id = ?;
     `;
-    await dbConnect.query(sql, [password, userId]);
+    const results = await dbConnect.query(sql, [password, userId]);
+    if (!results)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
+    if (results.affectedRows === 0) await ensureUserExists(userId);
     return;
 };
 

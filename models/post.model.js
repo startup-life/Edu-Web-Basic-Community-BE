@@ -1,5 +1,9 @@
 const dbConnect = require('../databases/index.js');
-const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
+const {
+    STATUS_CODE,
+    STATUS_MESSAGE,
+} = require('../constants/http-status-code.constant.js');
+const { createHttpError } = require('../utils/error.util.js');
 
 /**
  * 게시글 작성
@@ -10,13 +14,25 @@ const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
  */
 
 // 게시글 첨부 파일 추가
-const insertPostFile = async (userId, postId, attachFilePath) => {
+const insertPostFile = async (userId, postId, attachFileUrl) => {
     const sql = `
     INSERT INTO files
     (user_id, post_id, path, category)
     VALUES (?, ?, ?, 2);
     `;
-    return dbConnect.query(sql, [userId, postId, attachFilePath]);
+    return dbConnect.query(sql, [userId, postId, attachFileUrl]);
+};
+
+// 게시글 작성자 조회
+const findPostOwnerId = async postId => {
+    const sql = `
+    SELECT user_id
+    FROM posts
+    WHERE id = ? AND deleted_at IS NULL;
+    `;
+    const results = await dbConnect.query(sql, [postId]);
+    if (!results || results.length === 0) return null;
+    return results[0].user_id;
 };
 
 // 게시글 파일 ID 업데이트
@@ -119,12 +135,13 @@ exports.getPost = async (requestData, response) => {
 
 // 게시글 작성
 exports.writePost = async requestData => {
-    const { userId, nickname, title, content, attachFilePath } =
-        requestData;
+    const { userId, nickname, title, content, attachFileUrl } = requestData;
 
-    if (!nickname) {
-        return STATUS_MESSAGE.NOT_FOUND_USER;
-    }
+    if (!nickname)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_FOUND_USER,
+        );
 
     const insertPostSql = `
     INSERT INTO posts
@@ -137,21 +154,33 @@ exports.writePost = async requestData => {
         title,
         content,
     ]);
-    if (!writePostResults) return null;
 
-    if (attachFilePath) {
+    if (!writePostResults || !writePostResults.insertId)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
+
+    // 첨부 파일이 있는 경우 파일 정보 삽입 및 게시글과 파일 연결
+    if (attachFileUrl) {
         const postFileResults = await insertPostFile(
             userId,
             writePostResults.insertId,
-            attachFilePath,
+            attachFileUrl,
         );
+
+        if (!postFileResults || !postFileResults.insertId)
+            throw createHttpError(
+                STATUS_CODE.INTERNAL_SERVER_ERROR,
+                STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+            );
 
         await updatePostFileId(
             writePostResults.insertId,
             postFileResults.insertId,
         );
 
-        writePostResults.filePath = attachFilePath;
+        writePostResults.fileUrl = attachFileUrl;
     }
 
     return writePostResults;
@@ -159,8 +188,19 @@ exports.writePost = async requestData => {
 
 // 게시글 수정
 exports.updatePost = async requestData => {
-    const { postId, userId, title, content, attachFilePath } =
-        requestData;
+    const { postId, userId, title, content, attachFileUrl } = requestData;
+
+    const ownerId = await findPostOwnerId(postId);
+    if (!ownerId)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.POST_NOT_FOUND,
+        );
+    if (`${ownerId}` !== `${userId}`)
+        throw createHttpError(
+            STATUS_CODE.FORBIDDEN,
+            STATUS_MESSAGE.FORBIDDEN,
+        );
 
     const updatePostSql = `
     UPDATE posts
@@ -173,52 +213,37 @@ exports.updatePost = async requestData => {
         postId,
     ]);
 
-    if (!updatePostResults) return null;
+    if (!updatePostResults || updatePostResults.affectedRows === 0)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
 
-    if (attachFilePath === null) {
+    if (attachFileUrl === undefined) return;
+
+    if (attachFileUrl === null) {
         const sql = `
         UPDATE posts
         SET file_id = NULL
         WHERE id = ?;
         `;
         await dbConnect.query(sql, [postId]);
-    } else {
-        // 파일 경로 존재 여부 확인
-        const checkFilePathSql = `
-        SELECT COUNT(*) AS existing
-        FROM files
-        WHERE path = ?;
-        `;
-        const checkResults = await dbConnect.query(checkFilePathSql, [
-            attachFilePath,
-        ]);
-        if (checkResults[0].existing === 0) {
-            // 파일 경로가 존재하지 않으면 새로운 파일 정보 삽입
-            const postFilePathSql = `
-            INSERT INTO files
-            (user_id, post_id, path, category)
-            VALUES (?, ?, ?, 2);
-            `;
-            const postFileResults = await dbConnect.query(postFilePathSql, [
-                userId,
-                postId,
-                attachFilePath,
-            ]);
-
-            // file_id 업데이트
-            const updatePostFileSql = `
-            UPDATE posts
-            SET file_id = ?
-            WHERE id = ?;
-            `;
-            await dbConnect.query(updatePostFileSql, [
-                postFileResults.insertId,
-                postId,
-            ]);
-        }
+        return;
     }
 
-    return { ...updatePostResults, post_id: postId };
+    const postFileResults = await insertPostFile(
+        userId,
+        postId,
+        attachFileUrl,
+    );
+    if (!postFileResults || !postFileResults.insertId)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
+
+    await updatePostFileId(postId, postFileResults.insertId);
+    return;
 };
 
 // 게시글 삭제

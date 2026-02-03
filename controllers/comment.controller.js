@@ -3,6 +3,7 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
+const { pathToUrl } = require('../utils/url.util.js');
 
 /**
  * 댓글 조회
@@ -27,9 +28,14 @@ exports.getComments = async (request, response, next) => {
             throw error;
         }
 
+        const comments = responseData.map(comment => ({
+            ...comment,
+            profileImage: pathToUrl(request, comment.profileImage),
+        }));
+
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.GET_COMMENTS_SUCCESS,
-            data: responseData,
+            data: comments,
         });
     } catch (error) {
         return next(error);
