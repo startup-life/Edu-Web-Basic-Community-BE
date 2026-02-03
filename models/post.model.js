@@ -59,9 +59,21 @@ exports.getPosts = async (requestData, response) => {
         posts.created_at,
         posts.updated_at,
         posts.deleted_at,
-        posts.like_count,
-        posts.comment_count,
-        posts.view_count,
+        CASE
+            WHEN posts.like_count >= 1000000 THEN CONCAT(ROUND(posts.like_count / 1000000, 1), 'M')
+            WHEN posts.like_count >= 1000 THEN CONCAT(ROUND(posts.like_count / 1000, 1), 'K')
+            ELSE CAST(posts.like_count AS CHAR)
+        END as like_count,
+        CASE
+            WHEN posts.comment_count >= 1000000 THEN CONCAT(ROUND(posts.comment_count / 1000000, 1), 'M')
+            WHEN posts.comment_count >= 1000 THEN CONCAT(ROUND(posts.comment_count / 1000, 1), 'K')
+            ELSE CAST(posts.comment_count AS CHAR)
+        END as comment_count,
+        CASE
+            WHEN posts.view_count >= 1000000 THEN CONCAT(ROUND(posts.view_count / 1000000, 1), 'M')
+            WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
+            ELSE CAST(posts.view_count AS CHAR)
+        END as view_count,
         COALESCE(files.path, NULL) AS profileImageUrl
     FROM posts
             LEFT JOIN users ON posts.user_id = users.id
@@ -90,21 +102,9 @@ exports.getPost = async (requestData, response) => {
         posts.user_id,
         posts.nickname,
         posts.created_at,
-        CASE
-            WHEN posts.like_count >= 1000000 THEN CONCAT(ROUND(posts.like_count / 1000000, 1), 'M')
-            WHEN posts.like_count >= 1000 THEN CONCAT(ROUND(posts.like_count / 1000, 1), 'K')
-            ELSE CAST(posts.like_count AS CHAR)
-        END as like_count,
-        CASE
-            WHEN posts.comment_count >= 1000000 THEN CONCAT(ROUND(posts.comment_count / 1000000, 1), 'M')
-            WHEN posts.comment_count >= 1000 THEN CONCAT(ROUND(posts.comment_count / 1000, 1), 'K')
-            ELSE CAST(posts.comment_count AS CHAR)
-        END as comment_count,
-        CASE
-            WHEN posts.view_count >= 1000000 THEN CONCAT(ROUND(posts.view_count / 1000000, 1), 'M')
-            WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
-            ELSE CAST(posts.view_count AS CHAR)
-        END as view_count,
+        posts.like_count,
+        posts.comment_count,
+        posts.view_count,
         COALESCE(post_files.path, NULL) AS filePath,
         COALESCE(profile_files.path, NULL) AS profileImage
     FROM posts

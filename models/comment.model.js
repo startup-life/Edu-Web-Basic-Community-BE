@@ -41,7 +41,7 @@ exports.writeComment = async requestData => {
     const { postId, userId, nickname, commentContent } = requestData;
 
     const checkPostSql = `
-        SELECT * FROM posts
+        SELECT id FROM posts
         WHERE id = ? AND deleted_at IS NULL;
         `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
@@ -85,7 +85,7 @@ exports.updateComment = async requestData => {
     const { postId, commentId, userId, nickname, commentContent } = requestData;
 
     const checkPostSql = `
-        SELECT * FROM posts
+        SELECT id FROM posts
         WHERE id = ? AND deleted_at IS NULL;
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
@@ -151,7 +151,7 @@ exports.softDeleteComment = async requestData => {
 
     // 게시물 존재 여부 확인
     const checkPostSql = `
-    SELECT * FROM posts
+    SELECT id FROM posts
     WHERE id = ? AND deleted_at IS NULL;
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);

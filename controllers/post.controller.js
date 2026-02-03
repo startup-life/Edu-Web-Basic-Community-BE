@@ -65,7 +65,16 @@ exports.getPost = async (request, response, next) => {
         }
 
         const postData = {
-            ...responseData,
+            id: responseData.id,
+            title: responseData.title,
+            content: responseData.content,
+            fileId: responseData.file_id,
+            userId: responseData.user_id,
+            nickname: responseData.nickname,
+            createdAt: responseData.created_at,
+            likeCount: responseData.like_count,
+            commentCount: responseData.comment_count,
+            viewCount: responseData.view_count,
             filePath: pathToUrl(request, responseData.filePath),
             profileImage: pathToUrl(request, responseData.profileImage),
         };
