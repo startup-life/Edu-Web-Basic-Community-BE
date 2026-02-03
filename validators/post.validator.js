@@ -8,14 +8,14 @@ const postIdParamValidation = param('post_id')
     .isInt()
     .withMessage('INVALID_FORMAT');
 
-const postTitleValidation = body('postTitle')
+const titleValidation = body('title')
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
     .isLength({ max: 26 })
     .withMessage('TOO_LONG');
 
-const postContentValidation = body('postContent')
+const contentValidation = body('content')
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
@@ -40,16 +40,12 @@ const getPostsValidation = [offsetValidation, limitValidation, handleValidation]
 
 const getPostValidation = [postIdParamValidation, handleValidation];
 
-const writePostValidation = [
-    postTitleValidation,
-    postContentValidation,
-    handleValidation,
-];
+const writePostValidation = [titleValidation, contentValidation, handleValidation];
 
 const updatePostValidation = [
     postIdParamValidation,
-    postTitleValidation,
-    postContentValidation,
+    titleValidation,
+    contentValidation,
     handleValidation,
 ];
 

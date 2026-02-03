@@ -3,6 +3,7 @@ const {
     STATUS_CODE,
     STATUS_MESSAGE,
 } = require('../constants/http-status-code.constant.js');
+const { pathToUrl } = require('../utils/url.util.js');
 
 /**
  * 게시글 작성
@@ -12,16 +13,78 @@ const {
  * 게시글 삭제
  */
 
+// 게시글 목록 조회
+exports.getPosts = async (request, response, next) => {
+    const { offset, limit } = request.query;
+
+    try {
+        const requestData = {
+            offset: parseInt(offset, 10),
+            limit: parseInt(limit, 10),
+        };
+        const responseData = await postModel.getPosts(requestData);
+
+        const posts = responseData.map(post => ({
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            likeCount: post.like_count,
+            commentCount: post.comment_count,
+            viewCount: post.view_count,
+            author: {
+                userId: post.user_id,
+                nickname: post.nickname,
+                profileImageUrl: pathToUrl(request, post.profileImageUrl),
+            },
+            createdAt: post.created_at,
+        }));
+
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.POSTS_RETRIEVED,
+            data: posts,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// 게시글 상세 조회
+exports.getPost = async (request, response, next) => {
+    const { post_id: postId } = request.params;
+
+    try {
+        const requestData = {
+            postId,
+        };
+        const responseData = await postModel.getPost(requestData, response);
+
+        if (!responseData) {
+            const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
+            error.status = STATUS_CODE.NOT_FOUND;
+            throw error;
+        }
+
+        return response.status(STATUS_CODE.OK).json({
+            code: STATUS_MESSAGE.POST_RETRIEVED,
+            data: responseData,
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
 // 게시글 작성
 exports.writePost = async (request, response, next) => {
     const userId = request.userId;
-    const { postTitle, postContent, attachFilePath } = request.body;
+    const nickname = request.session && request.session.nickname;
+    const { title, content, attachFilePath } = request.body;
 
     try {
         const requestData = {
             userId,
-            postTitle,
-            postContent,
+            nickname,
+            title,
+            content,
             attachFilePath: attachFilePath || null,
         };
         const responseData = await postModel.writePost(requestData);
@@ -47,75 +110,24 @@ exports.writePost = async (request, response, next) => {
     }
 };
 
-// 게시글 목록 조회
-exports.getPosts = async (request, response, next) => {
-    const { offset, limit } = request.query;
-
-    try {
-        const requestData = {
-            offset: parseInt(offset, 10),
-            limit: parseInt(limit, 10),
-        };
-        const responseData = await postModel.getPosts(requestData);
-
-        if (!responseData || responseData.length === 0) {
-            const error = new Error(STATUS_MESSAGE.NOT_A_SINGLE_POST);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
-
-        return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.GET_POSTS_SUCCESS,
-            data: responseData,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// 게시글 상세 조회
-exports.getPost = async (request, response, next) => {
-    const { post_id: postId } = request.params;
-
-    try {
-        const requestData = {
-            postId,
-        };
-        const responseData = await postModel.getPost(requestData, response);
-
-        if (!responseData) {
-            const error = new Error(STATUS_MESSAGE.NOT_A_SINGLE_POST);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
-
-        return response.status(STATUS_CODE.OK).json({
-            code: STATUS_MESSAGE.GET_POST_SUCCESS,
-            data: responseData,
-        });
-    } catch (error) {
-        return next(error);
-    }
-};
-
 // 게시글 수정
 exports.updatePost = async (request, response, next) => {
     const { post_id: postId } = request.params;
     const userId = request.userId;
-    const { postTitle, postContent, attachFilePath } = request.body;
+    const { title, content, attachFilePath } = request.body;
 
     try {
         const requestData = {
             postId,
             userId,
-            postTitle,
-            postContent,
+            title,
+            content,
             attachFilePath: attachFilePath || null,
         };
         const responseData = await postModel.updatePost(requestData);
 
         if (!responseData) {
-            const error = new Error(STATUS_MESSAGE.NOT_A_SINGLE_POST);
+            const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
             error.status = STATUS_CODE.NOT_FOUND;
             throw error;
         }
@@ -140,7 +152,7 @@ exports.softDeletePost = async (request, response, next) => {
         const results = await postModel.softDeletePost(requestData);
 
         if (!results) {
-            const error = new Error(STATUS_MESSAGE.NOT_A_SINGLE_POST);
+            const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
             error.status = STATUS_CODE.NOT_FOUND;
             throw error;
         }

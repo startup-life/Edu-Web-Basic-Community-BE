@@ -9,61 +9,24 @@ const { STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
  * 게시글 삭제
  */
 
-// 게시글 작성
-exports.writePost = async requestData => {
-    const { userId, postTitle, postContent, attachFilePath } = requestData;
-
-    const nicknameSql = `
-    SELECT nickname FROM users
-    WHERE id = ? AND deleted_at IS NULL;
+// 게시글 첨부 파일 추가
+const insertPostFile = async (userId, postId, attachFilePath) => {
+    const sql = `
+    INSERT INTO files
+    (user_id, post_id, path, category)
+    VALUES (?, ?, ?, 2);
     `;
-    const nicknameResults = await dbConnect.query(nicknameSql, [userId]);
+    return dbConnect.query(sql, [userId, postId, attachFilePath]);
+};
 
-    if (!nicknameResults[0]) {
-        return STATUS_MESSAGE.NOT_FOUND_USER;
-    }
-
-    const writePostSql = `
-    INSERT INTO posts
-    (user_id, nickname, title, content)
-    VALUES (?, ?, ?, ?);
+// 게시글 파일 ID 업데이트
+const updatePostFileId = async (postId, fileId) => {
+    const sql = `
+    UPDATE posts
+    SET file_id = ?
+    WHERE id = ?;
     `;
-    const writePostResults = await dbConnect.query(writePostSql, [
-        userId,
-        nicknameResults[0].nickname,
-        postTitle,
-        postContent,
-    ]);
-    if (!writePostResults) {
-        return null;
-    }
-
-    if (attachFilePath) {
-        const postFilePathSql = `
-        INSERT INTO files
-        (user_id, post_id, path, category)
-        VALUES (?, ?, ?, 2);
-        `;
-        const postFileResults = await dbConnect.query(postFilePathSql, [
-            userId,
-            writePostResults.insertId,
-            attachFilePath,
-        ]);
-
-        const updatePostSql = `
-        UPDATE posts
-        SET file_id = ?
-        WHERE id = ?;
-        `;
-        await dbConnect.query(updatePostSql, [
-            postFileResults.insertId,
-            writePostResults.insertId,
-        ]);
-
-        writePostResults.filePath = attachFilePath;
-    }
-
-    return writePostResults;
+    return dbConnect.query(sql, [fileId, postId]);
 };
 
 // 게시글 목록 조회
@@ -71,7 +34,7 @@ exports.getPosts = async (requestData, response) => {
     const { offset, limit } = requestData;
     const sql = `
     SELECT
-        posts.id AS post_id,
+        posts.id,
         posts.title,
         posts.content,
         posts.file_id,
@@ -80,21 +43,9 @@ exports.getPosts = async (requestData, response) => {
         posts.created_at,
         posts.updated_at,
         posts.deleted_at,
-        CASE
-            WHEN posts.like_count >= 1000000 THEN CONCAT(ROUND(posts.like_count / 1000000, 1), 'M')
-            WHEN posts.like_count >= 1000 THEN CONCAT(ROUND(posts.like_count / 1000, 1), 'K')
-            ELSE posts.like_count
-        END as like_count,
-        CASE
-            WHEN posts.comment_count >= 1000000 THEN CONCAT(ROUND(posts.comment_count / 1000000, 1), 'M')
-            WHEN posts.comment_count >= 1000 THEN CONCAT(ROUND(posts.comment_count / 1000, 1), 'K')
-            ELSE posts.comment_count
-        END as comment_count,
-        CASE
-            WHEN posts.view_count >= 1000000 THEN CONCAT(ROUND(posts.view_count / 1000000, 1), 'M')
-            WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
-            ELSE posts.view_count
-        END as view_count,
+        posts.like_count,
+        posts.comment_count,
+        posts.view_count,
         COALESCE(files.path, NULL) AS profileImageUrl
     FROM posts
             LEFT JOIN users ON posts.user_id = users.id
@@ -116,15 +67,13 @@ exports.getPost = async (requestData, response) => {
     // 게시글 정보 가져오기
     const postSql = `
     SELECT 
-        posts.id AS post_id,
+        posts.id,
         posts.title,
         posts.content,
         posts.file_id,
         posts.user_id,
         posts.nickname,
         posts.created_at,
-        posts.updated_at,
-        posts.deleted_at,
         CASE
             WHEN posts.like_count >= 1000000 THEN CONCAT(ROUND(posts.like_count / 1000000, 1), 'M')
             WHEN posts.like_count >= 1000 THEN CONCAT(ROUND(posts.like_count / 1000, 1), 'K')
@@ -140,9 +89,17 @@ exports.getPost = async (requestData, response) => {
             WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
             ELSE CAST(posts.view_count AS CHAR)
         END as view_count,
-        COALESCE(files.path, NULL) AS filePath
+        COALESCE(post_files.path, NULL) AS filePath,
+        COALESCE(profile_files.path, NULL) AS profileImage
     FROM posts
-    LEFT JOIN files ON posts.file_id = files.id
+    LEFT JOIN files AS post_files
+        ON posts.file_id = post_files.id
+    LEFT JOIN users
+        ON posts.user_id = users.id
+    LEFT JOIN files AS profile_files
+        ON users.file_id = profile_files.id
+        AND profile_files.category = 1
+        AND profile_files.deleted_at IS NULL
     WHERE posts.id = ? AND posts.deleted_at IS NULL;
     `;
     const results = await dbConnect.query(postSql, [postId], response);
@@ -150,7 +107,6 @@ exports.getPost = async (requestData, response) => {
     if (!results || results.length === 0) return null;
 
     const postResult = results[0];
-    postResult.profileImage = null;
 
     // 조회수 증가
     const hitsSql = `
@@ -158,37 +114,52 @@ exports.getPost = async (requestData, response) => {
         `;
     await dbConnect.query(hitsSql, [postId], response);
 
-    // 유저 프로필 이미지 file id 가져오기
-    const userSql = `
-        SELECT file_id FROM users WHERE id = ?;
-        `;
-    const userResults = await dbConnect.query(
-        userSql,
-        [postResult.user_id],
-        response,
-    );
+    return postResult;
+};
 
-    // 유저 프로필 이미지 가져오기
-    if (userResults && userResults.length > 0 && userResults[0].file_id) {
-        const profileImageSql = `
-            SELECT path FROM files WHERE id = ? AND category = 1 AND user_id = ?;
-            `;
-        const profileImageResults = await dbConnect.query(
-            profileImageSql,
-            [userResults[0].file_id, postResult.user_id],
-            response,
+// 게시글 작성
+exports.writePost = async requestData => {
+    const { userId, nickname, title, content, attachFilePath } =
+        requestData;
+
+    if (!nickname) {
+        return STATUS_MESSAGE.NOT_FOUND_USER;
+    }
+
+    const insertPostSql = `
+    INSERT INTO posts
+    (user_id, nickname, title, content)
+    VALUES (?, ?, ?, ?);
+    `;
+    const writePostResults = await dbConnect.query(insertPostSql, [
+        userId,
+        nickname,
+        title,
+        content,
+    ]);
+    if (!writePostResults) return null;
+
+    if (attachFilePath) {
+        const postFileResults = await insertPostFile(
+            userId,
+            writePostResults.insertId,
+            attachFilePath,
         );
 
-        if (profileImageResults && profileImageResults.length > 0) {
-            postResult.profileImage = profileImageResults[0].path;
-        }
+        await updatePostFileId(
+            writePostResults.insertId,
+            postFileResults.insertId,
+        );
+
+        writePostResults.filePath = attachFilePath;
     }
-    return postResult;
+
+    return writePostResults;
 };
 
 // 게시글 수정
 exports.updatePost = async requestData => {
-    const { postId, userId, postTitle, postContent, attachFilePath } =
+    const { postId, userId, title, content, attachFilePath } =
         requestData;
 
     const updatePostSql = `
@@ -197,8 +168,8 @@ exports.updatePost = async requestData => {
     WHERE id = ? AND deleted_at IS NULL;
     `;
     const updatePostResults = await dbConnect.query(updatePostSql, [
-        postTitle,
-        postContent,
+        title,
+        content,
         postId,
     ]);
 
