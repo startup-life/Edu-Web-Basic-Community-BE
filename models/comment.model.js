@@ -1,4 +1,9 @@
 const dbConnect = require('../databases/index.js');
+const {
+    STATUS_CODE,
+    STATUS_MESSAGE,
+} = require('../constants/http-status-code.constant.js');
+const { createHttpError } = require('../utils/error.util.js');
 
 /**
  * 댓글 조회
@@ -13,14 +18,12 @@ exports.getComments = async requestData => {
 
     const sql = `
     SELECT
-        ct.id AS comment_id,
+        ct.id,
         ct.content,
         ct.post_id,
         ct.user_id,
         ct.nickname,
         ct.created_at,
-        ct.updated_at,
-        ct.deleted_at,
         ut.file_id,
         COALESCE(ft.path, NULL) AS profileImage
     FROM comments AS ct
@@ -30,7 +33,6 @@ exports.getComments = async requestData => {
     `;
     const results = await dbConnect.query(sql, [postId]);
 
-    if (!results || results.length === 0) return null;
     return results;
 };
 
@@ -44,7 +46,11 @@ exports.writeComment = async requestData => {
         `;
     const nicknameResults = await dbConnect.query(nicknameSql, [userId]);
 
-    if (!nicknameResults || nicknameResults.length === 0) return null;
+    if (!nicknameResults || nicknameResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_FOUND_USER,
+        );
 
     const { nickname } = nicknameResults[0];
 
@@ -54,7 +60,11 @@ exports.writeComment = async requestData => {
         `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
 
-    if (!checkPostResults || checkPostResults.length === 0) return null;
+    if (!checkPostResults || checkPostResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+        );
 
     const sql = `
         INSERT INTO comments
@@ -68,7 +78,11 @@ exports.writeComment = async requestData => {
         commentContent,
     ]);
 
-    if (!results) return 'insert_error';
+    if (!results)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
 
     const commentsCountSql = `
         UPDATE posts
@@ -90,7 +104,11 @@ exports.updateComment = async requestData => {
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
 
-    if (!checkPostResults || checkPostResults.length === 0) return null;
+    if (!checkPostResults || checkPostResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+        );
 
     const sql = `
         UPDATE comments
@@ -107,7 +125,11 @@ exports.updateComment = async requestData => {
         userId,
     ]);
 
-    if (!results || results.affectedRows === 0) return 'update_error';
+    if (!results || results.affectedRows === 0)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
 
     return results;
 };
@@ -122,9 +144,11 @@ exports.softDeleteComment = async requestData => {
     WHERE id = ? AND deleted_at IS NULL;
     `;
     const checkPostResults = await dbConnect.query(checkPostSql, [postId]);
-    if (!checkPostResults || checkPostResults.length === 0) {
-        return null;
-    }
+    if (!checkPostResults || checkPostResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.NOT_A_SINGLE_POST,
+        );
 
     // userId가 댓글 작성자 userId와 일치하는지 확인
     const checkUserSql = `
@@ -137,9 +161,11 @@ exports.softDeleteComment = async requestData => {
         userId,
     ]);
 
-    if (!checkUserResults || checkUserResults.length === 0) {
-        return 'no_auth_error';
-    }
+    if (!checkUserResults || checkUserResults.length === 0)
+        throw createHttpError(
+            STATUS_CODE.UNAUTHORIZED,
+            STATUS_MESSAGE.REQUIRED_AUTHORIZATION,
+        );
 
     // 댓글 소프트 삭제
     const sql = `
@@ -152,7 +178,11 @@ exports.softDeleteComment = async requestData => {
     `;
     const results = await dbConnect.query(sql, [postId, commentId, userId]);
 
-    if (!results || results.affectedRows === 0) return 'delete_error';
+    if (!results || results.affectedRows === 0)
+        throw createHttpError(
+            STATUS_CODE.INTERNAL_SERVER_ERROR,
+            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+        );
 
     // 댓글 수 감소
     const commentsCountSql = `
@@ -162,5 +192,5 @@ exports.softDeleteComment = async requestData => {
     `;
     await dbConnect.query(commentsCountSql, [postId]);
 
-    return results;
+    return;
 };

@@ -12,13 +12,13 @@ const { methodNotAllowed } = require('../middleware/method-not-allowed.middlewar
 const router = express.Router();
 
 router
-    .route('/posts/:post_id/comments')
+    .route('/posts/:postId/comments')
     .get(isLoggedIn, getCommentsValidation, commentController.getComments)
     .post(isLoggedIn, writeCommentValidation, commentController.writeComment)
     .all(methodNotAllowed);
 
 router
-    .route('/posts/:post_id/comments/:comment_id')
+    .route('/posts/:postId/comments/:commentId')
     .patch(isLoggedIn, updateCommentValidation, commentController.updateComment)
     .delete(isLoggedIn, deleteCommentValidation, commentController.softDeleteComment)
     .all(methodNotAllowed);

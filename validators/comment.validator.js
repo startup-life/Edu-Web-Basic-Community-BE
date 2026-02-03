@@ -2,7 +2,7 @@ const { body, param } = require('express-validator');
 const { handleValidation } = require('./index.js');
 const { postIdParamValidation } = require('./post.validator.js');
 
-const commentIdParamValidation = param('comment_id')
+const commentIdParamValidation = param('commentId')
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()
