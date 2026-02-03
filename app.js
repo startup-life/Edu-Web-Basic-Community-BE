@@ -1,4 +1,5 @@
-require('dotenv').config({ path: './.env.dev' });
+require('dotenv').config({ path: './.env' });
+require('./config/env.js');
 
 const express = require('express');
 const session = require('express-session');
@@ -15,6 +16,7 @@ const {
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3000;
+const CORS_ERROR_MESSAGE = 'Not allowed by CORS';
 const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS ||
     'http://localhost:8080')
     .split(',')
@@ -30,7 +32,7 @@ app.use(
                 callback(null, true);
                 return;
             }
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error(CORS_ERROR_MESSAGE));
         },
         credentials: true,
     }),
@@ -45,11 +47,11 @@ const limiter = rateLimit({
     // 10초동안
     windowMs: 10 * 1000,
     // 최대 100번의 요청을 허용
-    max: 100,
+    max: 20,
     // 제한 초과 시 전송할 응답
     handler: (request, response, next) => {
         response.status(STATUS_CODE.TOO_MANY_REQUESTS).json({
-            code: STATUS_MESSAGE.TOO_MANY_REQUESTS,
+            code: STATUS_MESSAGE.RATE_LIMIT_EXCEEDED,
             data: null,
         });
     },
@@ -92,6 +94,17 @@ app.use(helmet());
 
 // Routes
 app.use('/v1', route);
+
+// CORS Error Handler
+app.use((error, request, response, next) => {
+    if (error && error.message === CORS_ERROR_MESSAGE) {
+        return response.status(STATUS_CODE.FORBIDDEN).json({
+            code: STATUS_MESSAGE.CORS_NOT_ALLOWED,
+            data: null,
+        });
+    }
+    return next(error);
+});
 
 // Error Handler
 app.use(errorHandler);
