@@ -257,7 +257,10 @@ exports.softDeletePost = async requestData => {
     `;
     const results = await dbConnect.query(sql, [postId]);
 
-    if (!results || results.affectedRows === 0) return null;
-
-    return results;
+    if (!results || results.affectedRows === 0)
+        throw createHttpError(
+            STATUS_CODE.NOT_FOUND,
+            STATUS_MESSAGE.POST_NOT_FOUND,
+        );
+    return;
 };

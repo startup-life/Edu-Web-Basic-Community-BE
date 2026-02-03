@@ -50,7 +50,7 @@ exports.getPosts = async (request, response, next) => {
 
 // 게시글 상세 조회
 exports.getPost = async (request, response, next) => {
-    const { post_id: postId } = request.params;
+    const { postId } = request.params;
 
     try {
         const requestData = {
@@ -115,7 +115,7 @@ exports.writePost = async (request, response, next) => {
 
 // 게시글 수정
 exports.updatePost = async (request, response, next) => {
-    const { post_id: postId } = request.params;
+    const { postId } = request.params;
     const userId = request.userId;
     const { title, content, attachFileUrl } = request.body;
 
@@ -145,19 +145,13 @@ exports.updatePost = async (request, response, next) => {
 
 // 게시글 삭제
 exports.softDeletePost = async (request, response, next) => {
-    const { post_id: postId } = request.params;
+    const { postId } = request.params;
 
     try {
         const requestData = {
             postId,
         };
-        const results = await postModel.softDeletePost(requestData);
-
-        if (!results) {
-            const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
-            error.status = STATUS_CODE.NOT_FOUND;
-            throw error;
-        }
+        await postModel.softDeletePost(requestData);
 
         return response.status(STATUS_CODE.OK).json({
             code: STATUS_MESSAGE.DELETE_POST_SUCCESS,

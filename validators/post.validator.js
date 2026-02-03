@@ -1,7 +1,7 @@
 const { body, param, query } = require('express-validator');
 const { handleValidation } = require('./index.js');
 
-const postIdParamValidation = param('post_id')
+const postIdParamValidation = param('postId')
     .notEmpty()
     .withMessage('REQUIRED')
     .bail()

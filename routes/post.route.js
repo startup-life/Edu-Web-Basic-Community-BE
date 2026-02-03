@@ -19,7 +19,7 @@ router
     .all(methodNotAllowed);
 
 router
-    .route('/posts/:post_id')
+    .route('/posts/:postId')
     .get(isLoggedIn, getPostValidation, postController.getPost)
     .patch(isLoggedIn, updatePostValidation, postController.updatePost)
     .delete(isLoggedIn, deletePostValidation, postController.softDeletePost)
