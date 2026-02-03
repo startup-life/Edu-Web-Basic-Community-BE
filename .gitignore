@@ -16,3 +16,5 @@ pnpm-debug.log*
 # 업로드 파일은 제외하고 폴더 구조만 유지
 /public/**
 !/public/**/.gitkeep
+
+*.md

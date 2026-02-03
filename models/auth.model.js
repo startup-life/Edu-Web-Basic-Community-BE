@@ -113,7 +113,7 @@ exports.loginUser = async (requestData, response) => {
         AND files.category = 1
     WHERE users.email = ? AND users.deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(sql, [email], response);
+    const results = await dbConnect.query(sql, [email]);
 
     if (!results[0] || results[0] === 'undefined' || results[0] === undefined)
         throw createHttpError(

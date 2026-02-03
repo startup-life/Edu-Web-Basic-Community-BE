@@ -162,7 +162,7 @@ exports.getPosts = async (requestData, response) => {
     ORDER BY posts.created_at DESC
     LIMIT ${limit} OFFSET ${offset};
     `;
-    const results = await dbConnect.query(sql, response);
+    const results = await dbConnect.query(sql);
 
     if (!results) return null;
     return results;
@@ -326,7 +326,7 @@ exports.getPost = async (requestData, response) => {
         AND profile_files.deleted_at IS NULL
     WHERE posts.id = ? AND posts.deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(postSql, [userId, postId], response);
+    const results = await dbConnect.query(postSql, [userId, postId]);
 
     if (!results || results.length === 0) return null;
 
@@ -336,7 +336,7 @@ exports.getPost = async (requestData, response) => {
     const hitsSql = `
         UPDATE posts SET view_count = view_count + 1 WHERE id = ? AND deleted_at IS NULL;
         `;
-    await dbConnect.query(hitsSql, [postId], response);
+    await dbConnect.query(hitsSql, [postId]);
 
     return postResult;
 };
