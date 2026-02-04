@@ -90,7 +90,7 @@ exports.getPosts = async requestData => {
 
 const buildSearchPostsQuery = requestData => {
     const { keyword, offset, limit } = requestData;
-    const keywordLike = `%${keyword}%`;
+    const keywordTerm = keyword;
     const parsedOffset = Number.parseInt(offset, 10);
     const parsedLimit = Number.parseInt(limit, 10);
     const safeOffset = Number.isNaN(parsedOffset) ? 0 : Math.max(0, parsedOffset);
@@ -127,18 +127,15 @@ const buildSearchPostsQuery = requestData => {
             LEFT JOIN users ON posts.user_id = users.id
             LEFT JOIN files ON users.file_id = files.id
     WHERE posts.deleted_at IS NULL
-        AND (
-            posts.title LIKE ?
-            OR posts.content LIKE ?
-            OR posts.nickname LIKE ?
-        )
+        AND MATCH(posts.title, posts.content, posts.nickname)
+            AGAINST(? IN BOOLEAN MODE)
     ORDER BY posts.created_at DESC
     LIMIT ${safeLimit} OFFSET ${safeOffset};
     `;
 
     return {
         sql,
-        params: [keywordLike, keywordLike, keywordLike],
+        params: [keywordTerm],
     };
 };
 
