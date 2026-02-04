@@ -94,7 +94,7 @@ exports.getPost = async (request, response, next) => {
             postId,
             userId,
         };
-        const responseData = await postModel.getPost(requestData, response);
+        const responseData = await postModel.getPost(requestData);
 
         if (!responseData) {
             const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
