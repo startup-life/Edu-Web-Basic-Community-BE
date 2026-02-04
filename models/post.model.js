@@ -365,47 +365,59 @@ exports.writePost = async requestData => {
             STATUS_MESSAGE.NOT_FOUND_USER,
         );
 
-    const insertPostSql = `
-    INSERT INTO posts
-    (user_id, nickname, title, content)
-    VALUES (?, ?, ?, ?);
-    `;
-    const writePostResults = await dbConnect.query(insertPostSql, [
-        userId,
-        nickname,
-        title,
-        content,
-    ]);
-
-    if (!writePostResults || !writePostResults.insertId)
-        throw createHttpError(
-            STATUS_CODE.INTERNAL_SERVER_ERROR,
-            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
-        );
-
-    // 첨부 파일이 있는 경우 파일 정보 삽입 및 게시글과 파일 연결
-    if (attachFileUrl) {
-        const postFileResults = await insertPostFile(
+    return dbConnect.withTransaction(async connection => {
+        const insertPostSql = `
+        INSERT INTO posts
+        (user_id, nickname, title, content)
+        VALUES (?, ?, ?, ?);
+        `;
+        const [writePostResults] = await connection.execute(insertPostSql, [
             userId,
-            writePostResults.insertId,
-            attachFileUrl,
-        );
+            nickname,
+            title,
+            content,
+        ]);
 
-        if (!postFileResults || !postFileResults.insertId)
+        if (!writePostResults || !writePostResults.insertId)
             throw createHttpError(
                 STATUS_CODE.INTERNAL_SERVER_ERROR,
                 STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
             );
 
-        await updatePostFileId(
-            writePostResults.insertId,
-            postFileResults.insertId,
-        );
+        // 첨부 파일이 있는 경우 파일 정보 삽입 및 게시글과 파일 연결
+        if (attachFileUrl) {
+            const insertFileSql = `
+            INSERT INTO files
+            (user_id, post_id, path, category)
+            VALUES (?, ?, ?, 2);
+            `;
+            const [postFileResults] = await connection.execute(insertFileSql, [
+                userId,
+                writePostResults.insertId,
+                attachFileUrl,
+            ]);
 
-        writePostResults.fileUrl = attachFileUrl;
-    }
+            if (!postFileResults || !postFileResults.insertId)
+                throw createHttpError(
+                    STATUS_CODE.INTERNAL_SERVER_ERROR,
+                    STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+                );
 
-    return writePostResults;
+            const updatePostSql = `
+            UPDATE posts
+            SET file_id = ?
+            WHERE id = ?;
+            `;
+            await connection.execute(updatePostSql, [
+                postFileResults.insertId,
+                writePostResults.insertId,
+            ]);
+
+            writePostResults.fileUrl = attachFileUrl;
+        }
+
+        return writePostResults;
+    });
 };
 
 // 게시글 수정
