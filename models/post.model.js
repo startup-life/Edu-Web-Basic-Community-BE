@@ -201,7 +201,7 @@ exports.likePost = async requestData => {
             throw error;
         }
 
-        // 게시글 좋아요 수 증가
+        // 게시글 좋아요 수 증가 (posts는 이미 FOR UPDATE로 잠긴 상태)
         const [updateResults] = await connection.execute(
             `
             UPDATE posts

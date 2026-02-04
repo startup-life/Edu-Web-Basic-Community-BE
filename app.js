@@ -84,7 +84,7 @@ app.use(
 );
 
 // Timeout 설정
-app.use(timeout('5s'));
+app.use(timeout('10s'));
 
 // 요청 속도 제한 미들웨어
 app.use(limiter);
