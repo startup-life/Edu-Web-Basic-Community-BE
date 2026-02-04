@@ -58,6 +58,9 @@ exports.searchPosts = async (request, response, next) => {
             offset: Number.parseInt(offset, 10),
             limit: Number.parseInt(limit, 10),
         };
+        const explainRows = await postModel.explainSearchPosts(requestData);
+        console.log('[EXPLAIN][GET /v1/posts/search]', explainRows);
+
         const responseData = await postModel.searchPosts(requestData);
 
         const posts = responseData.map(post => ({

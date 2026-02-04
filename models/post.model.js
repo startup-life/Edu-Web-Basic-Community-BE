@@ -88,8 +88,7 @@ exports.getPosts = async requestData => {
     return results;
 };
 
-// 게시글 검색
-exports.searchPosts = async requestData => {
+const buildSearchPostsQuery = requestData => {
     const { keyword, offset, limit } = requestData;
     const keywordLike = `%${keyword}%`;
     const parsedOffset = Number.parseInt(offset, 10);
@@ -136,11 +135,27 @@ exports.searchPosts = async requestData => {
     ORDER BY posts.created_at DESC
     LIMIT ${safeLimit} OFFSET ${safeOffset};
     `;
-    const results = await dbConnect.query(sql, [
-        keywordLike,
-        keywordLike,
-        keywordLike,
-    ]);
+
+    return {
+        sql,
+        params: [keywordLike, keywordLike, keywordLike],
+    };
+};
+
+// 게시글 검색
+exports.searchPosts = async requestData => {
+    const { sql, params } = buildSearchPostsQuery(requestData);
+    const results = await dbConnect.query(sql, params);
+
+    if (!results) return null;
+    return results;
+};
+
+// 게시글 검색 EXPLAIN
+exports.explainSearchPosts = async requestData => {
+    const { sql, params } = buildSearchPostsQuery(requestData);
+    const explainSql = `EXPLAIN ${sql}`;
+    const results = await dbConnect.query(explainSql, params);
 
     if (!results) return null;
     return results;
