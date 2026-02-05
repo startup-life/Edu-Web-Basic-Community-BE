@@ -1,6 +1,5 @@
 const mysql = require('mysql2/promise');
 const colors = require('colors');
-const { STATUS_CODE, STATUS_MESSAGE } = require('../constants/http-status-code.constant.js');
 
 const config = {
     host: process.env.DB_HOST,
@@ -15,42 +14,32 @@ const config = {
 /* DB Pool 생성 */
 const pool = mysql.createPool(config);
 
-const query = async (queryString, params, response) => {
+const query = async (queryString, params = []) => {
     console.log(colors.yellow(queryString));
 
-    let connection;
+    const [rows] = await pool.execute(queryString, params);
+    return rows;
+};
+
+const withTransaction = async work => {
+    const connection = await pool.getConnection();
+    const originalExecute = connection.execute.bind(connection);
+    connection.execute = async (...args) => {
+        if (args[0]) console.log(colors.yellow(args[0]));
+        return originalExecute(...args);
+    };
     try {
-        connection = await pool.getConnection();
-        try {
-            const [rows] = await connection.execute(queryString, params);
-            connection.release();
-            return rows;
-        } catch (error) {
-            console.error('Query Error');
-            console.error(error);
-            if (connection) connection.release();
-            if (response) {
-                return response.status(STATUS_CODE.INTERNAL_SERVER_ERROR).json({
-                    code: STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
-                    data: null,
-                });
-            } else {
-                throw error;
-            }
-        }
+        await connection.beginTransaction();
+        const result = await work(connection);
+        await connection.commit();
+        return result;
     } catch (error) {
-        console.error('DB Error');
-        console.error(error);
-        if (connection) connection.release();
-        if (response) {
-            return response.status(STATUS_CODE.INTERNAL_SERVER_ERROR).json({
-                code: STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
-                data: null,
-            });
-        } else {
-            throw error;
-        }
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.execute = originalExecute;
+        connection.release();
     }
 };
 
-module.exports = { config, pool, query };
+module.exports = { config, pool, query, withTransaction };

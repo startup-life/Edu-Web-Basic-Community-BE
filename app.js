@@ -49,7 +49,7 @@ const limiter = rateLimit({
     // 최대 100번의 요청을 허용
     max: 20,
     // 제한 초과 시 전송할 응답
-    handler: (request, response, next) => {
+    handler: (request, response, _next) => {
         response.status(STATUS_CODE.TOO_MANY_REQUESTS).json({
             code: STATUS_MESSAGE.RATE_LIMIT_EXCEEDED,
             data: null,
@@ -84,7 +84,7 @@ app.use(
 );
 
 // Timeout 설정
-app.use(timeout('5s'));
+app.use(timeout('10s'));
 
 // 요청 속도 제한 미들웨어
 app.use(limiter);

@@ -47,6 +47,11 @@ const keywordValidation = query('keyword')
     .isString()
     .withMessage('INVALID_FORMAT');
 
+const sortValidation = query('sort')
+    .optional()
+    .isIn(['recent', 'relevance'])
+    .withMessage('INVALID_FORMAT');
+
 const getPostsValidation = [offsetValidation, limitValidation, handleValidation];
 
 const getPostValidation = [postIdParamValidation, handleValidation];
@@ -66,6 +71,7 @@ const searchPostsValidation = [
     keywordValidation,
     offsetValidation,
     limitValidation,
+    sortValidation,
     handleValidation,
 ];
 

@@ -45,88 +45,8 @@ const updatePostFileId = async (postId, fileId) => {
     return dbConnect.query(sql, [fileId, postId]);
 };
 
-// 게시글 존재 여부 확인
-const ensurePostExists = async postId => {
-    const sql = `
-    SELECT id
-    FROM posts
-    WHERE id = ? AND deleted_at IS NULL;
-    `;
-    const results = await dbConnect.query(sql, [postId]);
-    if (!results || results.length === 0)
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.POST_NOT_FOUND,
-        );
-};
-
-// 게시글 좋아요 여부 확인
-const hasUserLikedPost = async (postId, userId) => {
-    const sql = `
-    SELECT id
-    FROM post_likes
-    WHERE post_id = ? AND user_id = ?
-    LIMIT 1;
-    `;
-    const results = await dbConnect.query(sql, [postId, userId]);
-    return results && results.length > 0;
-};
-
-// 게시글 좋아요 추가
-const insertPostLike = async (postId, userId) => {
-    const sql = `
-    INSERT INTO post_likes
-    (post_id, user_id)
-    VALUES (?, ?);
-    `;
-    return dbConnect.query(sql, [postId, userId]);
-};
-
-// 게시글 좋아요 수 증가
-const incrementPostLikeCount = async postId => {
-    const sql = `
-    UPDATE posts
-    SET like_count = like_count + 1
-    WHERE id = ? AND deleted_at IS NULL;
-    `;
-    return dbConnect.query(sql, [postId]);
-};
-
-// 게시글 좋아요 수 감소
-const decrementPostLikeCount = async postId => {
-    const sql = `
-    UPDATE posts
-    SET like_count = CASE
-        WHEN like_count > 0 THEN like_count - 1
-        ELSE 0
-    END
-    WHERE id = ? AND deleted_at IS NULL;
-    `;
-    return dbConnect.query(sql, [postId]);
-};
-
-// 게시글 좋아요 수 조회
-const getPostLikeCount = async postId => {
-    const sql = `
-    SELECT like_count
-    FROM posts
-    WHERE id = ?;
-    `;
-    const results = await dbConnect.query(sql, [postId]);
-    return results && results[0] ? results[0].like_count : null;
-};
-
-// 좋아요 롤백
-const deletePostLike = async (postId, userId) => {
-    const sql = `
-    DELETE FROM post_likes
-    WHERE post_id = ? AND user_id = ?;
-    `;
-    await dbConnect.query(sql, [postId, userId]);
-};
-
 // 게시글 목록 조회
-exports.getPosts = async (requestData, response) => {
+exports.getPosts = async requestData => {
     const { offset, limit } = requestData;
     const sql = `
     SELECT
@@ -162,20 +82,24 @@ exports.getPosts = async (requestData, response) => {
     ORDER BY posts.created_at DESC
     LIMIT ${limit} OFFSET ${offset};
     `;
-    const results = await dbConnect.query(sql, response);
+    const results = await dbConnect.query(sql);
 
     if (!results) return null;
     return results;
 };
 
-// 게시글 검색
-exports.searchPosts = async requestData => {
-    const { keyword, offset, limit } = requestData;
-    const keywordLike = `%${keyword}%`;
+const buildSearchPostsQuery = requestData => {
+    const { keyword, offset, limit, sort } = requestData;
+    const keywordTerm = keyword;
     const parsedOffset = Number.parseInt(offset, 10);
     const parsedLimit = Number.parseInt(limit, 10);
     const safeOffset = Number.isNaN(parsedOffset) ? 0 : Math.max(0, parsedOffset);
     const safeLimit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, parsedLimit);
+    const normalizedSort = sort === 'relevance' ? 'relevance' : 'recent';
+    const orderByClause =
+        normalizedSort === 'relevance'
+            ? 'relevance_score DESC, posts.created_at DESC'
+            : 'posts.created_at DESC';
 
     const sql = `
     SELECT
@@ -203,24 +127,39 @@ exports.searchPosts = async requestData => {
             WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
             ELSE CAST(posts.view_count AS CHAR)
         END as view_count,
-        COALESCE(files.path, NULL) AS profileImageUrl
+        COALESCE(files.path, NULL) AS profileImageUrl,
+        MATCH(posts.title, posts.content, posts.nickname)
+            AGAINST(? IN BOOLEAN MODE) AS relevance_score
     FROM posts
             LEFT JOIN users ON posts.user_id = users.id
             LEFT JOIN files ON users.file_id = files.id
     WHERE posts.deleted_at IS NULL
-        AND (
-            posts.title LIKE ?
-            OR posts.content LIKE ?
-            OR posts.nickname LIKE ?
-        )
-    ORDER BY posts.created_at DESC
+        AND MATCH(posts.title, posts.content, posts.nickname)
+            AGAINST(? IN BOOLEAN MODE)
+    ORDER BY ${orderByClause}
     LIMIT ${safeLimit} OFFSET ${safeOffset};
     `;
-    const results = await dbConnect.query(sql, [
-        keywordLike,
-        keywordLike,
-        keywordLike,
-    ]);
+
+    return {
+        sql,
+        params: [keywordTerm, keywordTerm],
+    };
+};
+
+// 게시글 검색
+exports.searchPosts = async requestData => {
+    const { sql, params } = buildSearchPostsQuery(requestData);
+    const results = await dbConnect.query(sql, params);
+
+    if (!results) return null;
+    return results;
+};
+
+// 게시글 검색 EXPLAIN
+exports.explainSearchPosts = async requestData => {
+    const { sql, params } = buildSearchPostsQuery(requestData);
+    const explainSql = `EXPLAIN ${sql}`;
+    const results = await dbConnect.query(explainSql, params);
 
     if (!results) return null;
     return results;
@@ -230,68 +169,162 @@ exports.searchPosts = async requestData => {
 exports.likePost = async requestData => {
     const { postId, userId } = requestData;
 
-    await ensurePostExists(postId);
-
-    const alreadyLiked = await hasUserLikedPost(postId, userId);
-    if (alreadyLiked)
-        throw createHttpError(
-            STATUS_CODE.CONFLICT,
-            STATUS_MESSAGE.POST_ALREADY_LIKED,
+    return dbConnect.withTransaction(async connection => {
+        // 게시글 존재 여부 확인
+        const [postRows] = await connection.execute(
+            `
+            SELECT id
+            FROM posts
+            WHERE id = ? AND deleted_at IS NULL;
+            `,
+            [postId],
         );
+        if (!postRows || postRows.length === 0)
+            throw createHttpError(
+                STATUS_CODE.NOT_FOUND,
+                STATUS_MESSAGE.POST_NOT_FOUND,
+            );
 
-    try {
-        await insertPostLike(postId, userId);
-    } catch (error) {
-        if (error && error.code === 'ER_DUP_ENTRY') {
+        // 좋아요 중복 여부 확인
+        const [likedRows] = await connection.execute(
+            `
+            SELECT id
+            FROM post_likes
+            WHERE post_id = ? AND user_id = ?
+            LIMIT 1;
+            `,
+            [postId, userId],
+        );
+        if (likedRows && likedRows.length > 0)
             throw createHttpError(
                 STATUS_CODE.CONFLICT,
                 STATUS_MESSAGE.POST_ALREADY_LIKED,
             );
+
+        try {
+            await connection.execute(
+                `
+                INSERT INTO post_likes
+                (post_id, user_id)
+                VALUES (?, ?);
+                `,
+                [postId, userId],
+            );
+        } catch (error) {
+            if (error && error.code === 'ER_DUP_ENTRY') {
+                throw createHttpError(
+                    STATUS_CODE.CONFLICT,
+                    STATUS_MESSAGE.POST_ALREADY_LIKED,
+                );
+            }
+            throw error;
         }
-        throw error;
-    }
 
-    const updateResults = await incrementPostLikeCount(postId);
-    if (!updateResults || updateResults.affectedRows === 0) {
-        await deletePostLike(postId, userId);
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.POST_NOT_FOUND,
+        // 게시글 좋아요 수 증가 (posts는 이미 FOR UPDATE로 잠긴 상태)
+        const [updateResults] = await connection.execute(
+            `
+            UPDATE posts
+            SET like_count = like_count + 1
+            WHERE id = ? AND deleted_at IS NULL;
+            `,
+            [postId],
         );
-    }
+        if (!updateResults || updateResults.affectedRows === 0)
+            throw createHttpError(
+                STATUS_CODE.NOT_FOUND,
+                STATUS_MESSAGE.POST_NOT_FOUND,
+            );
 
-    const likeCount = await getPostLikeCount(postId);
-    return likeCount;
+        // 변경된 좋아요 수 조회
+        const [rows] = await connection.execute(
+            `
+            SELECT like_count
+            FROM posts
+            WHERE id = ?;
+            `,
+            [postId],
+        );
+        return rows && rows[0] ? rows[0].like_count : null;
+    });
 };
 
 // 게시글 좋아요 감소
 exports.unlikePost = async requestData => {
     const { postId, userId } = requestData;
 
-    await ensurePostExists(postId);
+    return dbConnect.withTransaction(async connection => {
+        // 게시글 존재 여부 확인
+        const [postRows] = await connection.execute(
+            `
+            SELECT id
+            FROM posts
+            WHERE id = ? AND deleted_at IS NULL;
+            `,
+            [postId],
+        );
+        if (!postRows || postRows.length === 0)
+            throw createHttpError(
+                STATUS_CODE.NOT_FOUND,
+                STATUS_MESSAGE.POST_NOT_FOUND,
+            );
 
-    const alreadyLiked = await hasUserLikedPost(postId, userId);
-    if (!alreadyLiked)
-        throw createHttpError(
-            STATUS_CODE.CONFLICT,
-            STATUS_MESSAGE.POST_ALREADY_UNLIKED,
+        // 좋아요 존재 여부 확인
+        const [likedRows] = await connection.execute(
+            `
+            SELECT id
+            FROM post_likes
+            WHERE post_id = ? AND user_id = ?
+            LIMIT 1;
+            `,
+            [postId, userId],
+        );
+        if (!likedRows || likedRows.length === 0)
+            throw createHttpError(
+                STATUS_CODE.CONFLICT,
+                STATUS_MESSAGE.POST_ALREADY_UNLIKED,
+            );
+
+        await connection.execute(
+            `
+            DELETE FROM post_likes
+            WHERE post_id = ? AND user_id = ?;
+            `,
+            [postId, userId],
         );
 
-    await deletePostLike(postId, userId);
-
-    const updateResults = await decrementPostLikeCount(postId);
-    if (!updateResults || updateResults.affectedRows === 0)
-        throw createHttpError(
-            STATUS_CODE.NOT_FOUND,
-            STATUS_MESSAGE.POST_NOT_FOUND,
+        // 게시글 좋아요 수 감소
+        const [updateResults] = await connection.execute(
+            `
+            UPDATE posts
+            SET like_count = CASE
+                WHEN like_count > 0 THEN like_count - 1
+                ELSE 0
+            END
+            WHERE id = ? AND deleted_at IS NULL;
+            `,
+            [postId],
         );
+        if (!updateResults || updateResults.affectedRows === 0)
+            throw createHttpError(
+                STATUS_CODE.NOT_FOUND,
+                STATUS_MESSAGE.POST_NOT_FOUND,
+            );
 
-    const likeCount = await getPostLikeCount(postId);
-    return likeCount;
+        // 변경된 좋아요 수 조회
+        const [rows] = await connection.execute(
+            `
+            SELECT like_count
+            FROM posts
+            WHERE id = ?;
+            `,
+            [postId],
+        );
+        return rows && rows[0] ? rows[0].like_count : null;
+    });
 };
 
 // 게시글 상세 조회
-exports.getPost = async (requestData, response) => {
+exports.getPost = async requestData => {
     const { postId, userId } = requestData;
 
     // 게시글 정보 가져오기
@@ -326,7 +359,7 @@ exports.getPost = async (requestData, response) => {
         AND profile_files.deleted_at IS NULL
     WHERE posts.id = ? AND posts.deleted_at IS NULL;
     `;
-    const results = await dbConnect.query(postSql, [userId, postId], response);
+    const results = await dbConnect.query(postSql, [userId, postId]);
 
     if (!results || results.length === 0) return null;
 
@@ -336,7 +369,7 @@ exports.getPost = async (requestData, response) => {
     const hitsSql = `
         UPDATE posts SET view_count = view_count + 1 WHERE id = ? AND deleted_at IS NULL;
         `;
-    await dbConnect.query(hitsSql, [postId], response);
+    await dbConnect.query(hitsSql, [postId]);
 
     return postResult;
 };
@@ -351,47 +384,59 @@ exports.writePost = async requestData => {
             STATUS_MESSAGE.NOT_FOUND_USER,
         );
 
-    const insertPostSql = `
-    INSERT INTO posts
-    (user_id, nickname, title, content)
-    VALUES (?, ?, ?, ?);
-    `;
-    const writePostResults = await dbConnect.query(insertPostSql, [
-        userId,
-        nickname,
-        title,
-        content,
-    ]);
-
-    if (!writePostResults || !writePostResults.insertId)
-        throw createHttpError(
-            STATUS_CODE.INTERNAL_SERVER_ERROR,
-            STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
-        );
-
-    // 첨부 파일이 있는 경우 파일 정보 삽입 및 게시글과 파일 연결
-    if (attachFileUrl) {
-        const postFileResults = await insertPostFile(
+    return dbConnect.withTransaction(async connection => {
+        const insertPostSql = `
+        INSERT INTO posts
+        (user_id, nickname, title, content)
+        VALUES (?, ?, ?, ?);
+        `;
+        const [writePostResults] = await connection.execute(insertPostSql, [
             userId,
-            writePostResults.insertId,
-            attachFileUrl,
-        );
+            nickname,
+            title,
+            content,
+        ]);
 
-        if (!postFileResults || !postFileResults.insertId)
+        if (!writePostResults || !writePostResults.insertId)
             throw createHttpError(
                 STATUS_CODE.INTERNAL_SERVER_ERROR,
                 STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
             );
 
-        await updatePostFileId(
-            writePostResults.insertId,
-            postFileResults.insertId,
-        );
+        // 첨부 파일이 있는 경우 파일 정보 삽입 및 게시글과 파일 연결
+        if (attachFileUrl) {
+            const insertFileSql = `
+            INSERT INTO files
+            (user_id, post_id, path, category)
+            VALUES (?, ?, ?, 2);
+            `;
+            const [postFileResults] = await connection.execute(insertFileSql, [
+                userId,
+                writePostResults.insertId,
+                attachFileUrl,
+            ]);
 
-        writePostResults.fileUrl = attachFileUrl;
-    }
+            if (!postFileResults || !postFileResults.insertId)
+                throw createHttpError(
+                    STATUS_CODE.INTERNAL_SERVER_ERROR,
+                    STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+                );
 
-    return writePostResults;
+            const updatePostSql = `
+            UPDATE posts
+            SET file_id = ?
+            WHERE id = ?;
+            `;
+            await connection.execute(updatePostSql, [
+                postFileResults.insertId,
+                writePostResults.insertId,
+            ]);
+
+            writePostResults.fileUrl = attachFileUrl;
+        }
+
+        return writePostResults;
+    });
 };
 
 // 게시글 수정

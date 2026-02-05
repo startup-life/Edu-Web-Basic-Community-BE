@@ -50,14 +50,22 @@ exports.getPosts = async (request, response, next) => {
 
 // 게시글 검색
 exports.searchPosts = async (request, response, next) => {
-    const { keyword, offset, limit } = request.query;
+    const { keyword, offset, limit, sort } = request.query;
 
     try {
+        const normalizedSort =
+            String(sort || 'recent').toLowerCase() === 'relevance'
+                ? 'relevance'
+                : 'recent';
         const requestData = {
             keyword,
             offset: Number.parseInt(offset, 10),
             limit: Number.parseInt(limit, 10),
+            sort: normalizedSort,
         };
+        const explainRows = await postModel.explainSearchPosts(requestData);
+        console.log('[EXPLAIN][GET /v1/posts/search]', explainRows);
+
         const responseData = await postModel.searchPosts(requestData);
 
         const posts = responseData.map(post => ({
@@ -94,7 +102,7 @@ exports.getPost = async (request, response, next) => {
             postId,
             userId,
         };
-        const responseData = await postModel.getPost(requestData, response);
+        const responseData = await postModel.getPost(requestData);
 
         if (!responseData) {
             const error = new Error(STATUS_MESSAGE.POST_NOT_FOUND);
