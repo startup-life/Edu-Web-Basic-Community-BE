@@ -89,12 +89,17 @@ exports.getPosts = async requestData => {
 };
 
 const buildSearchPostsQuery = requestData => {
-    const { keyword, offset, limit } = requestData;
+    const { keyword, offset, limit, sort } = requestData;
     const keywordTerm = keyword;
     const parsedOffset = Number.parseInt(offset, 10);
     const parsedLimit = Number.parseInt(limit, 10);
     const safeOffset = Number.isNaN(parsedOffset) ? 0 : Math.max(0, parsedOffset);
     const safeLimit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, parsedLimit);
+    const normalizedSort = sort === 'relevance' ? 'relevance' : 'recent';
+    const orderByClause =
+        normalizedSort === 'relevance'
+            ? 'relevance_score DESC, posts.created_at DESC'
+            : 'posts.created_at DESC';
 
     const sql = `
     SELECT
@@ -122,20 +127,22 @@ const buildSearchPostsQuery = requestData => {
             WHEN posts.view_count >= 1000 THEN CONCAT(ROUND(posts.view_count / 1000, 1), 'K')
             ELSE CAST(posts.view_count AS CHAR)
         END as view_count,
-        COALESCE(files.path, NULL) AS profileImageUrl
+        COALESCE(files.path, NULL) AS profileImageUrl,
+        MATCH(posts.title, posts.content, posts.nickname)
+            AGAINST(? IN BOOLEAN MODE) AS relevance_score
     FROM posts
             LEFT JOIN users ON posts.user_id = users.id
             LEFT JOIN files ON users.file_id = files.id
     WHERE posts.deleted_at IS NULL
         AND MATCH(posts.title, posts.content, posts.nickname)
             AGAINST(? IN BOOLEAN MODE)
-    ORDER BY posts.created_at DESC
+    ORDER BY ${orderByClause}
     LIMIT ${safeLimit} OFFSET ${safeOffset};
     `;
 
     return {
         sql,
-        params: [keywordTerm],
+        params: [keywordTerm, keywordTerm],
     };
 };
 
