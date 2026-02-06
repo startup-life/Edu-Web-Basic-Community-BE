@@ -327,51 +327,15 @@ exports.unlikePost = async requestData => {
 exports.getPost = async requestData => {
     const { postId, userId } = requestData;
 
-    // 게시글 정보 가져오기
-    const postSql = `
-    SELECT 
-        posts.id,
-        posts.title,
-        posts.content,
-        posts.file_id,
-        posts.user_id,
-        posts.nickname,
-        posts.created_at,
-        posts.like_count,
-        posts.comment_count,
-        posts.view_count,
-        EXISTS(
-            SELECT 1
-            FROM post_likes
-            WHERE post_likes.post_id = posts.id
-                AND post_likes.user_id = ?
-        ) AS is_liked,
-        COALESCE(post_files.path, NULL) AS filePath,
-        COALESCE(profile_files.path, NULL) AS profileImage
-    FROM posts
-    LEFT JOIN files AS post_files
-        ON posts.file_id = post_files.id
-    LEFT JOIN users
-        ON posts.user_id = users.id
-    LEFT JOIN files AS profile_files
-        ON users.file_id = profile_files.id
-        AND profile_files.category = 1
-        AND profile_files.deleted_at IS NULL
-    WHERE posts.id = ? AND posts.deleted_at IS NULL;
-    `;
-    const results = await dbConnect.query(postSql, [userId, postId]);
+    console.log('[SP] sp_get_post_detail', { postId, userId });
 
-    if (!results || results.length === 0) return null;
+    const results = await dbConnect.query(
+        'CALL sp_get_post_detail(?, ?);',
+        [userId, postId],
+    );
 
-    const postResult = results[0];
-
-    // 조회수 증가
-    const hitsSql = `
-        UPDATE posts SET view_count = view_count + 1 WHERE id = ? AND deleted_at IS NULL;
-        `;
-    await dbConnect.query(hitsSql, [postId]);
-
-    return postResult;
+    const rows = Array.isArray(results) ? results[0] : [];
+    return rows && rows.length > 0 ? rows[0] : null;
 };
 
 // 게시글 작성
